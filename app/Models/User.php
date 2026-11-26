@@ -47,6 +47,8 @@ use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
  * @property string|null $avatar_url
  * @property string $recovery_code
  * @property string|null $admin_role_name
+ * @property array $admin_permissions
+ * @property bool $has_password
  * @property string $md5
  * @property AdminRole|null $adminRole
  * @property \Illuminate\Database\Eloquent\Collection|ApiKey[] $apiKeys
