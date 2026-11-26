@@ -3,24 +3,15 @@
 namespace Everest\Services\Permission;
 
 use Everest\Models\User;
-use Everest\Models\AdminRole;
 
 class AdminPermissionService
 {
     /**
-     * Get the permissions associated with the admin user.
+     * Get the permissions associated with the admin user, as a flat list of
+     * permission strings. Root administrators receive ["*"].
      */
     public function handle(User $user): array
     {
-        $permissions = [];
-
-        if ($user->admin_role_id) {
-            $role = AdminRole::findOrFail($user->admin_role_id);
-            $permissions[] = $role->permissions;
-        } else {
-            $permissions[] = ['*'];
-        }
-
-        return $permissions;
+        return $user->admin_permissions;
     }
 }

@@ -6,6 +6,7 @@ use Everest\Models\Server;
 use Everest\Models\Database;
 use Everest\Facades\Activity;
 use Illuminate\Http\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Everest\Services\Databases\DatabasePasswordService;
 use Everest\Services\Databases\DatabaseManagementService;
 use Everest\Transformers\Api\Application\ServerDatabaseTransformer;
@@ -41,6 +42,8 @@ class DatabaseController extends ApplicationApiController
      */
     public function view(GetServerDatabaseRequest $request, Server $server, Database $database): array
     {
+        $this->assertDatabaseBelongsToServer($server, $database);
+
         return $this->transform($database, ServerDatabaseTransformer::class);
     }
 
@@ -51,6 +54,8 @@ class DatabaseController extends ApplicationApiController
      */
     public function resetPassword(ServerDatabaseWriteRequest $request, Server $server, Database $database): Response
     {
+        $this->assertDatabaseBelongsToServer($server, $database);
+
         $this->databasePasswordService->handle($database);
 
         Activity::event('admin:servers:databases:reset-password')
@@ -89,9 +94,9 @@ class DatabaseController extends ApplicationApiController
      *
      * @throws \Exception
      */
-    public function delete(ServerDatabaseWriteRequest $request, Database $database): Response
+    public function delete(ServerDatabaseWriteRequest $request, Server $server, Database $database): Response
     {
-        $server = $database->server;
+        $this->assertDatabaseBelongsToServer($server, $database);
 
         $this->databaseManagementService->delete($database);
 
@@ -103,5 +108,16 @@ class DatabaseController extends ApplicationApiController
             ->log();
 
         return $this->returnNoContent();
+    }
+
+    /**
+     * Ensures the requested database belongs to the server in the URL, so that a
+     * database cannot be accessed through a different server.
+     */
+    private function assertDatabaseBelongsToServer(Server $server, Database $database): void
+    {
+        if ($database->server_id !== $server->id) {
+            throw new NotFoundHttpException(trans('exceptions.api.resource_not_found'));
+        }
     }
 }

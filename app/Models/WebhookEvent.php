@@ -14,6 +14,10 @@ class WebhookEvent extends Model
 {
     protected $fillable = ['key', 'description', 'enabled'];
 
+    protected $casts = [
+        'enabled' => 'bool',
+    ];
+
     public static array $validationRules = [
         'key' => 'required|string|between:1,191',
         'description' => 'required|string',

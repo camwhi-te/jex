@@ -3,6 +3,8 @@
 namespace Everest\Services\Api;
 
 use Everest\Models\ApiKey;
+use Illuminate\Support\Arr;
+use Everest\Services\Acl\Api\AdminAcl;
 use Illuminate\Contracts\Encryption\Encrypter;
 use Everest\Contracts\Repository\ApiKeyRepositoryInterface;
 
@@ -44,7 +46,15 @@ class KeyCreationService
         ]);
 
         if ($this->keyType === ApiKey::TYPE_APPLICATION) {
-            $data = array_merge($data, $permissions);
+            // Only the legacy r_<resource> permission columns may be set from the
+            // permissions array, and they are merged first so that they can never
+            // overwrite the owner, type, identifier, or token of the key.
+            $columns = array_map(
+                fn (string $resource) => AdminAcl::COLUMN_IDENTIFIER . $resource,
+                AdminAcl::getResourceList(),
+            );
+
+            $data = array_merge(Arr::only($permissions, $columns), $data);
         }
 
         return $this->repository->create($data, true, true);

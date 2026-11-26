@@ -52,13 +52,28 @@ class UpgradeController extends ClientApiController
         $existing_product = Product::findOrFail($server->billing_product_id);
         $new_product = Product::findOrFail($request->input('product_id'));
 
-        if ($existing_product->price >= $new_product->price) {
-            throw new DisplayException('You cannot upgrade to a cheaper plan.');
-        }
+        $this->assertUpgradable($existing_product, $new_product);
 
         $charge = $this->upgradeService->charge($server, $existing_product, $new_product);
 
         return ['charge' => $charge];
+    }
+
+    /**
+     * Ensure the new product is a valid upgrade target for the existing one: it must be in
+     * the same category (the same set offered by index()) and cost more.
+     *
+     * @throws DisplayException
+     */
+    private function assertUpgradable(Product $existing, Product $new): void
+    {
+        if ($new->category_uuid !== $existing->category_uuid) {
+            throw new DisplayException('You can only upgrade to a plan in the same category.');
+        }
+
+        if ($existing->price >= $new->price) {
+            throw new DisplayException('You cannot upgrade to a cheaper plan.');
+        }
     }
 
     /**
@@ -67,18 +82,19 @@ class UpgradeController extends ClientApiController
      */
     public function create(ProcessUpgradeRequest $request, Server $server): string
     {
-        $validated = $this->upgradeService->validate($request->user());
-
-        if (!$validated) {
-            throw new DisplayException('This server cannot be upgraded at this time.');
-        }
+        // Throws if the user is still within the cooldown period.
+        $this->upgradeService->validate($request->user());
 
         $existing_product = Product::findOrFail($server->billing_product_id);
         $new_product = Product::findOrFail($request->input('product_id'));
+
+        $this->assertUpgradable($existing_product, $new_product);
+
         $price = $this->upgradeService->charge($server, $existing_product, $new_product);
 
-        if ($existing_product->price >= $new_product->price) {
-            throw new DisplayException('You cannot upgrade to a cheaper plan.');
+        // A zero charge means the server is past its renewal date; it must be renewed first.
+        if ($price <= 0) {
+            throw new DisplayException('This server must be renewed before it can be upgraded.');
         }
 
         $metadata = [

@@ -49,13 +49,19 @@ class AuthenticateServerAccess
         try {
             $server->validateCurrentState();
         } catch (ServerStateConflictException $exception) {
-            // Still allow users to get information about their server if it is installing or
-            // being transferred.
+            // Always allow users to get information about their server, whatever state it is in.
             if (!$request->routeIs('api:client:server.view')) {
-                if (($server->isSuspended() || $server->node->isUnderMaintenance()) && !$request->routeIs('api:client:server.resources')) {
-                    throw $exception;
-                }
-                if (!$user->root_admin || !$request->routeIs($this->except)) {
+                $isSuspendedOrUnderMaintenance = $server->isSuspended() || $server->node->isUnderMaintenance();
+
+                // Resource utilization remains available while the server is suspended or
+                // its node is under maintenance.
+                $allowResources = $isSuspendedOrUnderMaintenance && $request->routeIs('api:client:server.resources');
+
+                // Root admins may still connect to the websocket while the server is installing,
+                // restoring a backup or being transferred (but not when suspended or under maintenance).
+                $allowAdmin = !$isSuspendedOrUnderMaintenance && $user->root_admin && $request->routeIs($this->except);
+
+                if (!$allowResources && !$allowAdmin) {
                     throw $exception;
                 }
             }

@@ -4,6 +4,8 @@ namespace Everest\Http\Requests\Api\Application\Servers;
 
 use Everest\Models\Server;
 use Illuminate\Support\Arr;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Exists;
 use Everest\Models\AdminRole;
 use Everest\Http\Requests\Api\Application\ApplicationApiRequest;
 
@@ -35,14 +37,16 @@ class StoreServerRequest extends ApplicationApiRequest
             'feature_limits.databases' => $rules['database_limit'],
             'feature_limits.subusers' => $rules['subuser_limit'],
 
-            'allocation.default' => 'required|bail|integer|exists:allocations,id',
-            'allocation.additional.*' => 'integer|exists:allocations,id',
+            'allocation.default' => ['required', 'bail', 'integer', $this->unassignedAllocationOnNode()],
+            'allocation.additional' => 'sometimes|array',
+            'allocation.additional.*' => ['bail', 'integer', 'distinct', 'different:allocation.default', $this->unassignedAllocationOnNode()],
 
             'startup' => $rules['startup'],
             'environment' => 'present|array',
             'egg_id' => $rules['egg_id'],
             'image' => $rules['image'],
             'skip_scripts' => 'present|boolean',
+            'start_on_completion' => 'sometimes|boolean',
         ];
     }
 
@@ -88,6 +92,17 @@ class StoreServerRequest extends ApplicationApiRequest
         ];
 
         return is_null($key) ? $response : Arr::get($response, $key, $default);
+    }
+
+    /**
+     * Returns a rule that requires the allocation to exist on the node the server is
+     * being created on, and to not be assigned to any server yet.
+     */
+    protected function unassignedAllocationOnNode(): Exists
+    {
+        return Rule::exists('allocations', 'id')
+            ->where('node_id', is_scalar($this->input('node_id')) ? $this->input('node_id') : null)
+            ->whereNull('server_id');
     }
 
     public function permission(): string

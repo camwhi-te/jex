@@ -9,6 +9,7 @@ use Illuminate\Support\Arr;
 use Everest\Models\Allocation;
 use Everest\Models\ServerTransfer;
 use Everest\Exceptions\DisplayException;
+use Everest\Exceptions\Http\Connection\DaemonConnectionException;
 use Everest\Services\Nodes\NodeJWTService;
 use Illuminate\Database\ConnectionInterface;
 use Everest\Repositories\Wings\DaemonTransferRepository;
@@ -105,7 +106,21 @@ class ServerTransferService
             ->handle($node, $server->uuid . $transfer->id);
 
         // Notify the source node to begin the transfer.
-        $this->daemonTransferRepository->setServer($server)->notify($node, $token);
+        try {
+            $this->daemonTransferRepository->setServer($server)->notify($node, $token);
+        } catch (DaemonConnectionException $exception) {
+            // Release the reserved allocations and remove the transfer record, otherwise the
+            // server would be stuck in a "transferring" state that never completes.
+            $this->connection->transaction(function () use ($transfer, $allocation, $additional_allocations) {
+                Allocation::query()
+                    ->whereIn('id', array_merge([$allocation->id], $additional_allocations))
+                    ->update(['server_id' => null]);
+
+                $transfer->delete();
+            });
+
+            throw $exception;
+        }
 
         return $transfer->refresh();
     }

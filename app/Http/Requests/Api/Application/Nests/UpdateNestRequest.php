@@ -9,7 +9,12 @@ class UpdateNestRequest extends StoreNestRequest
 {
     public function rules(?array $rules = null): array
     {
-        return $rules ?? Nest::getRulesForUpdate($this->route()->parameter('nest'));
+        $rules = $rules ?? Nest::getRulesForUpdate($this->route()->parameter('nest'));
+
+        // A nest's author cannot be changed, so it is optional and ignored.
+        $rules['author'] = ['sometimes', 'nullable', 'string', 'email'];
+
+        return $rules;
     }
 
     public function permission(): string

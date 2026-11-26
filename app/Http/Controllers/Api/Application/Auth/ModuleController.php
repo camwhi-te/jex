@@ -6,6 +6,7 @@ use Everest\Models\Setting;
 use Everest\Facades\Activity;
 use Illuminate\Http\Response;
 use Everest\Http\Controllers\Api\Application\ApplicationApiController;
+use Everest\Http\Requests\Api\Application\Auth\AuthModuleRequest;
 use Everest\Http\Requests\Api\Application\Auth\EnableAuthModuleRequest;
 use Everest\Http\Requests\Api\Application\Auth\UpdateAuthModuleRequest;
 use Everest\Http\Requests\Api\Application\Auth\DisableAuthModuleRequest;
@@ -27,10 +28,12 @@ class ModuleController extends ApplicationApiController
      */
     public function enable(EnableAuthModuleRequest $request): Response
     {
-        Setting::set('settings::modules:auth:' . $request->all()[0] . ':enabled', true);
+        $module = $request->input('module');
+
+        Setting::set('settings::modules:auth:' . $module . ':enabled', true);
 
         Activity::event('admin:auth:module:enable')
-            ->property('module', $request->all()[0])
+            ->property('module', $module)
             ->description('An authentication module was enabled')
             ->log();
 
@@ -44,10 +47,12 @@ class ModuleController extends ApplicationApiController
      */
     public function disable(DisableAuthModuleRequest $request): Response
     {
-        Setting::set('settings::modules:auth:' . $request->all()[0] . ':enabled', false);
+        $module = $request->input('module');
+
+        Setting::set('settings::modules:auth:' . $module . ':enabled', false);
 
         Activity::event('admin:auth:module:disable')
-            ->property('module', $request->all()[0])
+            ->property('module', $module)
             ->description('An authentication module was disabled')
             ->log();
 
@@ -62,15 +67,15 @@ class ModuleController extends ApplicationApiController
      */
     public function update(UpdateAuthModuleRequest $request): Response
     {
-        Setting::set(
-            'settings::modules:auth:' . $request->input('module') . ':' . $request->input('key'),
-            $request->input('value')
-        );
+        $key = $request->input('key');
+        $value = $request->input('value');
+
+        Setting::set('settings::modules:auth:' . $request->input('module') . ':' . $key, $value);
 
         Activity::event('admin:auth:module:update')
             ->property('module', $request->input('module'))
-            ->property('key', $request->input('key'))
-            ->property('value', $request->input('value'))
+            ->property('key', $key)
+            ->property('value', in_array($key, AuthModuleRequest::SECRET_KEYS, true) ? '[redacted]' : $value)
             ->description('An authentication module setting was updated')
             ->log();
 

@@ -10,7 +10,7 @@ class UpdateApplicationModeRequest extends ApplicationApiRequest
     public function rules(): array
     {
         return [
-            'mode' => 'nullable|string|in:standard,personal',
+            'mode' => 'required|string|in:standard,personal',
         ];
     }
 

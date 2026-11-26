@@ -20,7 +20,7 @@ class TicketMessageTransformer extends Transformer
         return [
             'id' => $model->id,
             'message' => $model->message,
-            'author' => $model->user,
+            'author' => TicketTransformer::userSummary($model->user),
             'created_at' => $model->created_at->toIso8601String(),
             'updated_at' => $model->updated_at->toIso8601String() ? $model->updated_at->toIso8601String() : null,
         ];

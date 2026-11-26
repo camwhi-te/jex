@@ -5,6 +5,7 @@ namespace Everest\Http\Controllers\Api\Client\Servers;
 use GeminiAPI\Client;
 use Everest\Models\Server;
 use Illuminate\Http\JsonResponse;
+use Everest\Exceptions\Http\HttpForbiddenException;
 use GeminiAPI\Resources\Parts\TextPart;
 use Everest\Http\Controllers\Api\Client\ClientApiController;
 use Everest\Http\Requests\Api\Client\Servers\QueryAIRequest;
@@ -25,7 +26,7 @@ class AIController extends ClientApiController
     public function index(QueryAIRequest $request, Server $server): JsonResponse
     {
         if (!config('modules.ai.enabled')) {
-            throw new \Exception('The JexpanelAI module is not enabled.');
+            throw new HttpForbiddenException('The JexpanelAI module is not enabled.');
         }
 
         $client = new Client(config('modules.ai.key'));

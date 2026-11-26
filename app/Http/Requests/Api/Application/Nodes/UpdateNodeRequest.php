@@ -7,6 +7,8 @@ use Everest\Models\AdminRole;
 
 class UpdateNodeRequest extends StoreNodeRequest
 {
+    protected bool $defaultDaemonBase = false;
+
     public function rules(?array $rules = null): array
     {
         return parent::rules($rules ?? Node::getRulesForUpdate($this->route()->parameter('node')));

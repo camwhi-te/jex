@@ -9,7 +9,7 @@ class StoreTicketRequest extends ClientApiRequest
     public function rules(): array
     {
         return [
-            'title' => 'required|string|min:1|max:191',
+            'title' => 'required|string|min:3|max:191',
             'message' => 'required|string|min:1|max:4000',
         ];
     }

@@ -2,6 +2,7 @@
 
 namespace Everest\Transformers\Api\Application;
 
+use Everest\Models\User;
 use Everest\Models\Ticket;
 use League\Fractal\Resource\Collection;
 use Everest\Transformers\Api\Transformer;
@@ -28,10 +29,28 @@ class TicketTransformer extends Transformer
             'id' => $model->id,
             'title' => $model->title,
             'status' => $model->status,
-            'user' => $model->user,
-            'assigned_to' => $model->assignedTo,
+            'user' => self::userSummary($model->user),
+            'assigned_to' => self::userSummary($model->assignedTo),
             'created_at' => $model->created_at->toIso8601String(),
             'updated_at' => $model->updated_at->toIso8601String() ? $model->updated_at->toIso8601String() : null,
+        ];
+    }
+
+    /**
+     * Return the limited set of user fields exposed on tickets and ticket messages,
+     * rather than the full user record.
+     */
+    public static function userSummary(?User $user): ?array
+    {
+        if (is_null($user)) {
+            return null;
+        }
+
+        return [
+            'id' => $user->id,
+            'uuid' => $user->uuid,
+            'username' => $user->username,
+            'email' => $user->email,
         ];
     }
 

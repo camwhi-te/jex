@@ -50,6 +50,8 @@ class NestController extends ApplicationApiController
             ->allowedSorts(...['id', 'name', 'author']);
         if ($perPage > 0) {
             $nests = $nests->paginate($perPage);
+        } else {
+            $nests = $nests->get();
         }
 
         return $this->transform($nests, NestTransformer::class);
@@ -70,7 +72,8 @@ class NestController extends ApplicationApiController
      */
     public function store(StoreNestRequest $request): array
     {
-        $nest = $this->nestCreationService->handle($request->validated());
+        $validated = $request->validated();
+        $nest = $this->nestCreationService->handle($validated, $validated['author'] ?? null);
 
         Activity::event('admin:nests:create')
             ->subject($nest)
@@ -89,7 +92,7 @@ class NestController extends ApplicationApiController
         $egg = $this->eggImporterService->handleContent(
             $nest->id,
             $request->getContent(),
-            $request->headers->get('Content-Type'),
+            $request->headers->get('Content-Type') ?? '',
         );
 
         Activity::event('admin:nests:import')
@@ -99,7 +102,7 @@ class NestController extends ApplicationApiController
             ->description('An egg was imported to a nest')
             ->log();
 
-        return $this->transform($egg, EggTransformer::class);
+        return $this->transform($egg->refresh(), EggTransformer::class);
     }
 
     /**
@@ -111,6 +114,7 @@ class NestController extends ApplicationApiController
     public function update(UpdateNestRequest $request, Nest $nest): array
     {
         $this->nestUpdateService->handle($nest->id, $request->validated());
+        $nest->refresh();
 
         Activity::event('admin:nests:update')
             ->subject($nest)

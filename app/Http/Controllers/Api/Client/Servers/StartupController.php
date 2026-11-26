@@ -53,13 +53,14 @@ class StartupController extends ClientApiController
     public function update(UpdateStartupVariableRequest $request, Server $server): array
     {
         $variable = $server->variables()->where('env_variable', $request->input('key'))->first();
-        $original = $variable->server_value;
 
         if (is_null($variable) || !$variable->user_viewable) {
             throw new BadRequestHttpException('The environment variable you are trying to edit does not exist.');
         } elseif (!$variable->user_editable) {
             throw new BadRequestHttpException('The environment variable you are trying to edit is read-only.');
         }
+
+        $original = $variable->server_value;
 
         /* @var \Everest\Models\EggVariable $variable */
 
@@ -78,7 +79,8 @@ class StartupController extends ClientApiController
 
         $startup = $this->startupCommandService->handle($server);
 
-        if ($variable->env_variable !== $request->input('value')) {
+        // Only log an activity event if the stored value actually changed.
+        if ($original !== ($request->input('value') ?? '')) {
             Activity::event('server:startup.edit')
                 ->subject($variable)
                 ->property([

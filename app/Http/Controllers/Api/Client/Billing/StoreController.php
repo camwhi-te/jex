@@ -15,6 +15,7 @@ use Everest\Transformers\Api\Client\ProductTransformer;
 use Everest\Transformers\Api\Client\CategoryTransformer;
 use Everest\Transformers\Api\Client\EggVariableTransformer;
 use Everest\Http\Controllers\Api\Client\ClientApiController;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class StoreController extends ClientApiController
 {
@@ -46,6 +47,11 @@ class StoreController extends ClientApiController
      */
     public function products(Category $category): array
     {
+        // Hidden categories are not part of the storefront.
+        if (!$category->visible) {
+            throw new NotFoundHttpException();
+        }
+
         $products = Product::where('category_uuid', $category->uuid)->orderBy('price')->get();
 
         if ($products->count() == 0) {

@@ -101,8 +101,12 @@ class EggImporterService
      * @throws \Everest\Exceptions\Repository\RecordNotFoundException
      * @throws InvalidFileUploadException
      */
-    private function handleArray(int $nestId, array $parsed): Egg
+    private function handleArray(int $nestId, mixed $parsed): Egg
     {
+        if (!is_array($parsed)) {
+            throw new InvalidFileUploadException('The JSON file provided is not in a format that can be recognized.');
+        }
+
         $parsed = $this->eggParserService->handle($parsed);
 
         /** @var Nest $nest */

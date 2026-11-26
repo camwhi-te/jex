@@ -249,4 +249,75 @@ class AccountControllerTest extends ClientApiIntegrationTestCase
 
         $this->assertDatabaseHas('users', ['id' => $user->id, 'avatar_url' => null]);
     }
+
+    /**
+     * Test that the avatar endpoint rejects a request that provides neither a file nor a URL.
+     */
+    public function testAvatarUpdateRequiresFileOrUrl()
+    {
+        /** @var User $user */
+        $user = User::factory()->create(['avatar_url' => 'https://example.com/avatar.png']);
+
+        $this->actingAs($user)->postJson('/api/client/account/avatar', [])->assertUnprocessable();
+
+        $this->assertDatabaseHas('users', ['id' => $user->id, 'avatar_url' => 'https://example.com/avatar.png']);
+    }
+
+    /**
+     * Test that an account still waiting for setup can choose a username and password.
+     */
+    public function testPendingAccountCanBeSetUp()
+    {
+        /** @var User $user */
+        $user = User::factory()->create(['username' => 'null_user_' . Str::random(16)]);
+
+        $this->actingAs($user)->postJson('/api/client/account/setup', [
+            'username' => 'newuser',
+            'password' => 'New_Password1',
+        ])->assertNoContent();
+
+        $user = $user->refresh();
+        $this->assertSame('newuser', $user->username);
+        $this->assertTrue(Hash::check('New_Password1', $user->password));
+    }
+
+    /**
+     * Test that the setup endpoint cannot be used to change the password of an account
+     * that has already been set up.
+     */
+    public function testSetupIsRejectedForAccountThatIsAlreadySetUp()
+    {
+        /** @var User $user */
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->postJson('/api/client/account/setup', [
+            'username' => 'newuser',
+            'password' => 'New_Password1',
+        ])
+            ->assertStatus(Response::HTTP_BAD_REQUEST)
+            ->assertJsonPath('errors.0.detail', 'This account has already been set up.');
+
+        $this->assertTrue(Hash::check('password', $user->refresh()->password));
+    }
+
+    /**
+     * Test that an invalid or already used username returns a validation error.
+     */
+    public function testSetupValidatesUsername()
+    {
+        $existing = User::factory()->create();
+
+        /** @var User $user */
+        $user = User::factory()->create(['username' => 'null_user_' . Str::random(16)]);
+
+        $this->actingAs($user)->postJson('/api/client/account/setup', [
+            'username' => $existing->username,
+            'password' => 'New_Password1',
+        ])->assertUnprocessable()->assertJsonPath('errors.0.meta.source_field', 'username');
+
+        $this->actingAs($user)->postJson('/api/client/account/setup', [
+            'username' => '_bad name_',
+            'password' => 'New_Password1',
+        ])->assertUnprocessable()->assertJsonPath('errors.0.meta.source_field', 'username');
+    }
 }

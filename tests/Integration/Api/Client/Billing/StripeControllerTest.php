@@ -134,6 +134,43 @@ class StripeControllerTest extends ClientApiIntegrationTestCase
         $this->assertSame(Order::STATUS_PENDING, $order->refresh()->status);
     }
 
+    public function testAnotherUserCannotProcessTheSession(): void
+    {
+        $this->enableBilling();
+        $user = \Everest\Models\User::factory()->create();
+        $other = \Everest\Models\User::factory()->create();
+        $server = $this->createServerModel(['user_id' => $user->id, 'renewal_date' => now()->subDays(30)]);
+        $product = $this->makeProduct();
+        $server->update(['billing_product_id' => $product->id]);
+
+        $sessionId = 'cs_test_other_user';
+        $order = Order::create([
+            'name' => Uuid::uuid4()->toString(),
+            'transaction_id' => $sessionId,
+            'user_id' => $user->id,
+            'description' => 'renewal',
+            'total' => 100.00,
+            'status' => Order::STATUS_PENDING,
+            'product_id' => $product->id,
+            'type' => Order::TYPE_RENEWAL,
+        ]);
+        $order->assignServer($server);
+
+        $this->stubSession($sessionId, 10000, 'usd', [
+            'user_id' => (string) $user->id,
+            'product_id' => (string) $product->id,
+            'server_id' => (string) $server->id,
+            'order_type' => Order::TYPE_RENEWAL,
+            'discount_code' => '',
+        ]);
+
+        $this->actingAs($other)->postJson('/api/client/billing/stripe/process', [
+            'session' => $sessionId,
+        ])->assertNotFound();
+
+        $this->assertSame(Order::STATUS_PENDING, $order->refresh()->status);
+    }
+
     public function testMatchingPaymentIsAccepted(): void
     {
         $this->enableBilling();

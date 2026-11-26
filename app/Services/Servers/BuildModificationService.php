@@ -48,12 +48,14 @@ class BuildModificationService
             // them correctly on the server model.
             $merge = Arr::only($data, ['oom_killer', 'memory', 'swap', 'io', 'cpu', 'threads', 'disk', 'allocation_id', 'renewal_date']);
 
-            $server->forceFill(array_merge($merge, [
-                'allocation_limit' => Arr::get($data, 'allocation_limit', 0) ?? null,
-                'backup_limit' => Arr::get($data, 'backup_limit', 0) ?? 0,
-                'database_limit' => Arr::get($data, 'database_limit', 0) ?? null,
-                'subuser_limit' => Arr::get($data, 'subuser_limit', 0) ?? null,
-            ]))->saveOrFail();
+            // Only touch the feature limits that were actually provided, so that omitted
+            // limits keep their current values.
+            $limits = Arr::only($data, ['allocation_limit', 'database_limit', 'subuser_limit']);
+            if (array_key_exists('backup_limit', $data)) {
+                $limits['backup_limit'] = $data['backup_limit'] ?? 0;
+            }
+
+            $server->forceFill(array_merge($merge, $limits))->saveOrFail();
 
             return $server->refresh();
         });

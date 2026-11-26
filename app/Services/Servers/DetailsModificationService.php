@@ -32,14 +32,13 @@ class DetailsModificationService
         return $this->connection->transaction(function () use ($data, $server) {
             $original = $server->user;
 
-            $server->forceFill([
-                'external_id' => Arr::get($data, 'external_id'),
-                'owner_id' => Arr::get($data, 'owner_id'),
-                'name' => Arr::get($data, 'name'),
-                'description' => Arr::get($data, 'description') ?? '',
-                'renewal_date' => array_key_exists('renewal_date', $data) ? Arr::get($data, 'renewal_date') : $server->renewal_date,
-                'billing_product_id' => array_key_exists('billing_product_id', $data) ? Arr::get($data, 'billing_product_id') : $server->billing_product_id,
-            ])->saveOrFail();
+            // Only update the fields that were provided, so omitted fields keep their current values.
+            $details = Arr::only($data, ['external_id', 'owner_id', 'name', 'renewal_date', 'billing_product_id']);
+            if (array_key_exists('description', $data)) {
+                $details['description'] = $data['description'] ?? '';
+            }
+
+            $server->forceFill($details)->saveOrFail();
 
             // If the owner_id value is changed we need to revoke any tokens that exist for the server
             // on the Wings instance so that the old owner no longer has any permission to access the

@@ -29,11 +29,11 @@ Route::prefix('/')->middleware([SuspendedAccount::class])->group(function () {
         Route::get('/', [Client\ServerGroupController::class, 'index']);
         Route::post('/', [Client\ServerGroupController::class, 'store']);
 
-        Route::patch('/{id}', [Client\ServerGroupController::class, 'update']);
-        Route::delete('/{id}', [Client\ServerGroupController::class, 'delete']);
+        Route::patch('/{id}', [Client\ServerGroupController::class, 'update'])->whereNumber('id');
+        Route::delete('/{id}', [Client\ServerGroupController::class, 'delete'])->whereNumber('id');
 
-        Route::post('/{id}/add', [Client\ServerGroupController::class, 'add']);
-        Route::post('/{id}/remove', [Client\ServerGroupController::class, 'remove']);
+        Route::post('/{id}/add', [Client\ServerGroupController::class, 'add'])->whereNumber('id');
+        Route::post('/{id}/remove', [Client\ServerGroupController::class, 'remove'])->whereNumber('id');
     });
 
     Route::prefix('/account')->middleware(AccountSubject::class)->group(function () {

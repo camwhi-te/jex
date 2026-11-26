@@ -10,7 +10,12 @@ class StoreNestRequest extends ApplicationApiRequest
 {
     public function rules(?array $rules = null): array
     {
-        return $rules ?? Nest::getRules();
+        $rules = $rules ?? Nest::getRules();
+
+        // The author is optional. When it is not sent, the configured service author is used.
+        $rules['author'] = ['sometimes', 'nullable', 'string', 'email'];
+
+        return $rules;
     }
 
     public function permission(): string

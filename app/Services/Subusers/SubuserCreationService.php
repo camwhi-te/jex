@@ -66,7 +66,7 @@ class SubuserCreationService
             $subuser = $this->subuserRepository->create([
                 'user_id' => $user->id,
                 'server_id' => $server->id,
-                'permissions' => array_unique($permissions),
+                'permissions' => array_values(array_unique($permissions)),
             ]);
 
             Assert::isInstanceOf($subuser, Subuser::class);

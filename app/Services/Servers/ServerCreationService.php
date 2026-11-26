@@ -5,6 +5,7 @@ namespace Everest\Services\Servers;
 use Ramsey\Uuid\Uuid;
 use Everest\Models\Egg;
 use Everest\Models\User;
+use Everest\Models\EggVariable;
 use Everest\Models\Server;
 use Illuminate\Support\Arr;
 use Webmozart\Assert\Assert;
@@ -73,9 +74,18 @@ class ServerCreationService
             $data['nest_id'] = Egg::query()->findOrFail($data['egg_id'])->nest_id;
         }
 
+        // Any egg variable that was not provided falls back to its default value, so that
+        // the value stored for the server matches the value that was validated.
+        $environment = Arr::get($data, 'environment') ?? [];
+        foreach (EggVariable::query()->where('egg_id', Arr::get($data, 'egg_id'))->get() as $variable) {
+            if (!array_key_exists($variable->env_variable, $environment)) {
+                $environment[$variable->env_variable] = $variable->default_value;
+            }
+        }
+
         $eggVariableData = $this->validatorService
             ->setUserLevel(User::USER_LEVEL_ADMIN)
-            ->handle(Arr::get($data, 'egg_id'), Arr::get($data, 'environment', []));
+            ->handle(Arr::get($data, 'egg_id'), $environment);
 
         // Due to the design of the Daemon, we need to persist this server to the disk
         // before we can actually create it on the Daemon.

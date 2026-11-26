@@ -4,7 +4,6 @@ namespace Everest\Http\Controllers\Api\Client\Billing;
 
 use Everest\Models\Egg;
 use Everest\Models\Node;
-use Everest\Models\User;
 use Stripe\StripeClient;
 use Everest\Models\Server;
 use Everest\Models\Billing\Order;
@@ -13,6 +12,7 @@ use Everest\Models\Billing\Product;
 use Everest\Exceptions\DisplayException;
 use Everest\Models\Billing\DiscountCode;
 use Everest\Models\Billing\BillingException;
+use Stripe\Exception\ApiErrorException;
 use Everest\Services\Billing\PaymentService;
 use Everest\Services\Billing\UpgradeService;
 use Everest\Services\Billing\DiscountService;
@@ -21,6 +21,7 @@ use Everest\Services\Billing\ServerRenewalService;
 use Everest\Services\Billing\ServerDeploymentService;
 use Everest\Transformers\Api\Client\ServerTransformer;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Everest\Http\Controllers\Api\Client\ClientApiController;
 use Everest\Transformers\Api\Client\DiscountCodeTransformer;
 use Everest\Http\Requests\Api\Client\Billing\CreateStripePaymentRequest;
@@ -77,14 +78,19 @@ class StripeController extends ClientApiController
             } catch (ModelNotFoundException $exception) {
                 throw new DisplayException('This server ID does not exist on your account.');
             }
+
+            if ((int) $server->billing_product_id !== $product->id) {
+                throw new DisplayException('A server can only be renewed using the product it is billed under.');
+            }
         }
 
         $order_type = $server ? Order::TYPE_RENEWAL : Order::TYPE_NEW;
-        $egg_id = $this->resolveEggSelection($product, $request->input('egg_id'));
+        // An egg is only chosen when deploying a new server; renewals keep the server's egg.
+        $egg_id = $server ? null : $this->resolveEggSelection($product, $request->input('egg_id'));
 
         $discountCode = $request->input('discount_code');
 
-        if ($request->exists('discount_code')) {
+        if ($request->filled('discount_code')) {
             $price = $this->discountService->handle($product, $discountCode);
         }
 
@@ -132,7 +138,7 @@ class StripeController extends ClientApiController
     {
         try {
             $transaction = $this->stripe->checkout->sessions->retrieve($request->input('session'));
-        } catch (DisplayException $ex) {
+        } catch (ApiErrorException $ex) {
             throw new DisplayException('Failed to process order: unable to retrieve session');
         }
 
@@ -143,13 +149,16 @@ class StripeController extends ClientApiController
         // StripeObject keeps its values in internal properties, so an (array) cast
         // yields mangled keys rather than the metadata itself.
         $metadata = $transaction->metadata?->toArray() ?? [];
-        $server = Server::find($metadata['server_id']);
-        $user = User::findOrFail($metadata['user_id']);
-        $product = Product::findOrFail($metadata['product_id']);
+        $user = $request->user();
 
-        // Atomically claim the order before doing any deployment work.
-        $order = DB::transaction(function () use ($transaction, $metadata) {
-            $order = Order::where('transaction_id', $transaction->id)->lockForUpdate()->firstOrFail();
+        // Atomically claim the order before doing any deployment work. Only the user who
+        // created the checkout session, and therefore owns the order, may process it.
+        $order = DB::transaction(function () use ($transaction, $metadata, $user) {
+            $order = Order::where('transaction_id', $transaction->id)->lockForUpdate()->first();
+
+            if (!$order || $order->user_id !== $user->id || (string) ($metadata['user_id'] ?? '') !== (string) $user->id) {
+                throw new NotFoundHttpException();
+            }
 
             if ($order->status !== Order::STATUS_PENDING) {
                 throw new DisplayException('This order has already been processed.');
@@ -180,7 +189,15 @@ class StripeController extends ClientApiController
             throw new DisplayException('Payment amount or currency does not match the order.');
         }
 
+        // The order is the source of truth for what was bought and which server it applies to.
+        $product = Product::findOrFail($order->product_id);
+        $server = $order->server;
+
         try {
+            if ($order->type !== Order::TYPE_NEW && !$server instanceof Server) {
+                throw new DisplayException('The server for this order could not be found.');
+            }
+
             switch ($order->type) {
                 case Order::TYPE_RENEWAL:
                     $server = $this->renewalService->handle($server);
@@ -197,7 +214,7 @@ class StripeController extends ClientApiController
             }
 
             $order->setStatus(Order::STATUS_PROCESSED);
-        } catch (DisplayException $exception) {
+        } catch (\Throwable $exception) {
             $order->setStatus(Order::STATUS_FAILED);
 
             BillingException::create([
@@ -206,6 +223,8 @@ class StripeController extends ClientApiController
                 'title' => 'Deployment or renewal of server failed',
                 'description' => $exception->getMessage(),
             ]);
+
+            throw $exception;
         }
 
         return $this->transform($server, ServerTransformer::class);

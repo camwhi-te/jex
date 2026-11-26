@@ -43,7 +43,11 @@ export const searchEggs = async (
 };
 
 export const exportEgg = async (eggId: number): Promise<string> => {
-    const { data } = await http.get(`/api/application/eggs/${eggId}/export`);
+    // Keep the export as raw text so it can be shown in the editor exactly as generated.
+    const { data } = await http.get<string>(`/api/application/eggs/${eggId}/export`, {
+        responseType: 'text',
+        transformResponse: [(raw: string) => raw],
+    });
     return data;
 };
 

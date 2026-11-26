@@ -27,7 +27,6 @@ class ServerTransformer extends Transformer
         'variables',
         'node',
         'databases',
-        'transfer',
         'product',
     ];
 

@@ -72,6 +72,7 @@ class LinkController extends ApplicationApiController
     public function update(Links\UpdateLinkRequest $request, int $id): array
     {
         $link = CustomLink::findOrFail($id);
+        $original = ['name' => $link->name, 'url' => $link->url];
 
         $link->update([
             'url' => $request['url'],
@@ -81,8 +82,8 @@ class LinkController extends ApplicationApiController
 
         Activity::event('admin:link:update')
             ->subject($link)
-            ->property('name', $link->name . ' => ' . $request['name'])
-            ->property('url', $link->url . ' => ' . $request['url'])
+            ->property('name', $original['name'] . ' => ' . $link->name)
+            ->property('url', $original['url'] . ' => ' . $link->url)
             ->description('An existing custom link was updated')
             ->log();
 

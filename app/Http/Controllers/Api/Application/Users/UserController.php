@@ -98,18 +98,17 @@ class UserController extends ApplicationApiController
      */
     public function update(UpdateUserRequest $request, User $user): array
     {
-        if (
-            !$request->user()->root_admin
-            && (
-                $request->input('root_admin')
-                || $request->input('admin_role_id') !== $user->admin_role_id
-            )
-        ) {
-            throw new DisplayException('You must be a root administrator to grant another user permissions.');
-        }
+        if (!$request->user()->root_admin) {
+            if ($user->root_admin) {
+                throw new DisplayException('You must be a root administrator to modify another root administrator.');
+            }
 
-        if (!$request->user()->root_admin && ($user->root_admin && !$request->input('root_admin'))) {
-            throw new DisplayException('You cannot remove rootAdmin without the same level of permission.');
+            if (
+                $request->boolean('root_admin')
+                || ($request->has('admin_role_id') && (int) $request->input('admin_role_id') !== (int) $user->admin_role_id)
+            ) {
+                throw new DisplayException('You must be a root administrator to grant another user permissions.');
+            }
         }
 
         $this->updateService->setUserLevel(User::USER_LEVEL_ADMIN);
@@ -134,6 +133,13 @@ class UserController extends ApplicationApiController
      */
     public function store(StoreUserRequest $request): JsonResponse
     {
+        if (
+            !$request->user()->root_admin
+            && ($request->boolean('root_admin') || !is_null($request->input('admin_role_id')))
+        ) {
+            throw new DisplayException('You must be a root administrator to grant another user permissions.');
+        }
+
         $user = $this->creationService->handle($request->validated());
 
         Activity::event('admin:users:create')
@@ -156,7 +162,7 @@ class UserController extends ApplicationApiController
     public function suspend(SuspendUserRequest $request, User $user): Response
     {
         if ($user->root_admin) {
-            throw new \Exception('You cannot suspend an administrator.');
+            throw new DisplayException('You cannot suspend an administrator.');
         }
 
         $user->update(['state' => $user->isSuspended() ? 'active' : 'suspended']);
@@ -164,7 +170,7 @@ class UserController extends ApplicationApiController
         Activity::event('admin:users:suspend')
             ->subject($user)
             ->property('user', $user)
-            ->description('A user was suspended')
+            ->description($user->isSuspended() ? 'A user was suspended' : 'A user was unsuspended')
             ->log();
 
         return $this->returnNoContent();

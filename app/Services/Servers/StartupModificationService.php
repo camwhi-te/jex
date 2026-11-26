@@ -5,6 +5,7 @@ namespace Everest\Services\Servers;
 use Everest\Models\Egg;
 use Everest\Models\User;
 use Everest\Models\Server;
+use Everest\Models\EggVariable;
 use Illuminate\Support\Arr;
 use Everest\Models\ServerVariable;
 use Everest\Traits\Services\HasUserLevels;
@@ -32,9 +33,23 @@ class StartupModificationService
             if (!empty($data['environment'])) {
                 $egg = $this->isUserLevel(User::USER_LEVEL_ADMIN) ? ($data['egg_id'] ?? $server->egg_id) : $server->egg_id;
 
+                // Variables that were not provided keep their current value (or the egg default
+                // when the server has no value stored or is switching eggs), rather than being
+                // overwritten with an empty value.
+                $environment = $data['environment'];
+                $current = (int) $egg === $server->egg_id
+                    ? $server->variables->pluck('server_value', 'env_variable')
+                    : collect();
+
+                foreach (EggVariable::query()->where('egg_id', $egg)->get() as $variable) {
+                    if (!array_key_exists($variable->env_variable, $environment)) {
+                        $environment[$variable->env_variable] = $current->get($variable->env_variable) ?? $variable->default_value;
+                    }
+                }
+
                 $results = $this->validatorService
                     ->setUserLevel($this->getUserLevel())
-                    ->handle($egg, $data['environment']);
+                    ->handle($egg, $environment);
 
                 foreach ($results as $result) {
                     ServerVariable::query()->updateOrCreate(

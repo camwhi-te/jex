@@ -46,7 +46,7 @@ class StoreSSHKeyRequest extends ClientApiRequest
             }
 
             if ($this->key instanceof RSA && $this->key->getLength() < 2048) {
-                $this->validator->errors()->add('public_key', 'RSA keys must be at least 2048 bytes in length.');
+                $this->validator->errors()->add('public_key', 'RSA keys must be at least 2048 bits in length.');
             }
 
             $fingerprint = $this->key->getFingerprint('sha256');

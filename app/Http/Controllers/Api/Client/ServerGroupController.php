@@ -5,14 +5,18 @@ namespace Everest\Http\Controllers\Api\Client;
 use Everest\Models\Server;
 use Illuminate\Http\Response;
 use Everest\Models\ServerGroup;
+use Illuminate\Support\Facades\DB;
 use Everest\Exceptions\DisplayException;
 use Everest\Http\Requests\Api\Client\ClientApiRequest;
 use Everest\Transformers\Api\Client\ServerGroupTransformer;
+use Everest\Http\Requests\Api\Client\Groups\StoreServerGroupRequest;
+use Everest\Http\Requests\Api\Client\Groups\UpdateServerGroupRequest;
+use Everest\Http\Requests\Api\Client\Groups\ServerGroupServerRequest;
 
 class ServerGroupController extends ClientApiController
 {
     /**
-     * Returns all the API keys that exist for the given client.
+     * Returns all the server groups that exist for the given client.
      */
     public function index(ClientApiRequest $request): array
     {
@@ -22,12 +26,12 @@ class ServerGroupController extends ClientApiController
     /**
      * Create a new server group and store in the database.
      */
-    public function store(ClientApiRequest $request): array
+    public function store(StoreServerGroupRequest $request): array
     {
         $group = ServerGroup::create([
             'user_id' => $request->user()->id,
-            'name' => $request->input('name'),
-            'color' => $request->input('color') ?? null,
+            'name' => $request->validated('name'),
+            'color' => $request->validated('color'),
         ]);
 
         return $this->transform($group, ServerGroupTransformer::class);
@@ -36,7 +40,7 @@ class ServerGroupController extends ClientApiController
     /**
      * Add a server to the selected group.
      */
-    public function add(ClientApiRequest $request, int $id): Response
+    public function add(ServerGroupServerRequest $request, int $id): Response
     {
         $group = ServerGroup::where('id', $id)->where('user_id', $request->user()->id)->first();
 
@@ -44,7 +48,7 @@ class ServerGroupController extends ClientApiController
             throw new DisplayException('No group with that ID exists on your account.');
         }
 
-        $server = Server::where('uuid', $request->input('server'))
+        $server = Server::where('uuid', $request->validated('server'))
             ->where('owner_id', $request->user()->id)
             ->first();
 
@@ -60,9 +64,9 @@ class ServerGroupController extends ClientApiController
     /**
      * Remove a server from the selected group.
      */
-    public function remove(ClientApiRequest $request, int $id): Response
+    public function remove(ServerGroupServerRequest $request, int $id): Response
     {
-        $server = Server::where('uuid', $request->input('server'))
+        $server = Server::where('uuid', $request->validated('server'))
             ->where('owner_id', $request->user()->id)
             ->where('group_id', $id)
             ->first();
@@ -79,7 +83,7 @@ class ServerGroupController extends ClientApiController
     /**
      * Update a selected server group.
      */
-    public function update(ClientApiRequest $request, int $id): Response
+    public function update(UpdateServerGroupRequest $request, int $id): Response
     {
         $group = ServerGroup::findOrFail($id);
 
@@ -88,8 +92,8 @@ class ServerGroupController extends ClientApiController
         }
 
         $group->update([
-            'name' => $request['name'] ?? $group->name,
-            'color' => $request['color'] ?? $group->color,
+            'name' => $request->validated('name') ?? $group->name,
+            'color' => $request->validated('color') ?? $group->color,
         ]);
 
         return $this->returnNoContent();
@@ -106,7 +110,13 @@ class ServerGroupController extends ClientApiController
             throw new DisplayException('You do not have permission to edit this server group.');
         }
 
-        $group->delete();
+        DB::transaction(function () use ($group) {
+            // There is no foreign key on servers.group_id, so release the servers here.
+            // Otherwise they would point at a missing group and fail validation on save.
+            Server::query()->where('group_id', $group->id)->update(['group_id' => null]);
+
+            $group->delete();
+        });
 
         return $this->returnNoContent();
     }

@@ -74,9 +74,7 @@ class AccountController extends ClientApiController
      */
     public function updatePassword(UpdatePasswordRequest $request): Response
     {
-        $user = Activity::event('user:account.password-changed')->transaction(function () use ($request) {
-            return $this->updateService->handle($request->user(), $request->validated());
-        });
+        $user = $this->updateService->handle($request->user(), $request->validated());
 
         $guard = $this->manager->guard();
         // If you do not update the user in the session you'll end up working with a

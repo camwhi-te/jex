@@ -36,7 +36,7 @@ export const updateGeneralSettings = async (settings: Partial<GeneralSettings>):
 
 export const updateModeSettings = async (mode: PanelMode): Promise<void> => {
     return new Promise((resolve, reject) => {
-        http.patch(`/api/application/settings/mode`, mode)
+        http.patch(`/api/application/settings/mode`, { mode })
             .then(() => resolve())
             .catch(reject);
     });

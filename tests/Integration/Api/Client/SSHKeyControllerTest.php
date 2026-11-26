@@ -83,7 +83,7 @@ class SSHKeyControllerTest extends ClientApiIntegrationTestCase
             'public_key' => $key->public_key,
         ])
             ->assertUnprocessable()
-            ->assertJsonPath('errors.0.detail', 'RSA keys must be at least 2048 bytes in length.');
+            ->assertJsonPath('errors.0.detail', 'RSA keys must be at least 2048 bits in length.');
 
         $this->assertEquals(0, $user->sshKeys()->count());
     }

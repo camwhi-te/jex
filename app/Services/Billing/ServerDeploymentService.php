@@ -36,7 +36,9 @@ class ServerDeploymentService
         $metadataEggId = $metadata['egg_id'] ?? '';
         $egg = $this->resolveEgg($product, $metadataEggId !== '' ? (int) $metadataEggId : null);
         $allocation = $this->getAllocation($metadata['node_id'], $order->id);
-        $environment = $this->getEnvironment($egg->id, json_decode($metadata['variables']));
+        // Decode as arrays: getEnvironment() only accepts array entries, so objects would be skipped.
+        $variables = json_decode($metadata['variables'] ?? '[]', true);
+        $environment = $this->getEnvironment($egg->id, is_array($variables) ? $variables : []);
 
         try {
             $server = $this->creation->handle([
@@ -113,12 +115,20 @@ class ServerDeploymentService
             $variables[$variable->env_variable] = $variable->default_value;
         }
 
+        // Customers may only set variables they could also change from the server's startup
+        // page: those that are both user viewable and user editable.
+        $editable = $defaults
+            ->filter(fn (EggVariable $variable) => $variable->user_viewable && $variable->user_editable)
+            ->pluck('env_variable')
+            ->all();
+
         // Override with custom variables
         foreach ($customVariables as $variable) {
             if (is_array($variable)
                 && array_key_exists('key', $variable)
                 && array_key_exists('value', $variable)
-                && !empty($variable['key'])) {
+                && !empty($variable['key'])
+                && in_array($variable['key'], $editable, true)) {
                 $variables[$variable['key']] = $variable['value'];
             }
         }

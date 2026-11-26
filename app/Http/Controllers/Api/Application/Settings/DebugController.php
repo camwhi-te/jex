@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\File;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Everest\Http\Controllers\Api\Application\ApplicationApiController;
+use Everest\Http\Requests\Api\Application\Settings\GetDebugLogsRequest;
 
 class DebugController extends ApplicationApiController
 {
@@ -28,7 +29,7 @@ class DebugController extends ApplicationApiController
      * rough count of the errors and warnings contained within each, so
      * admins can quickly spot misconfigurations without leaving the Panel.
      */
-    public function index(): array
+    public function index(GetDebugLogsRequest $request): array
     {
         $files = collect(File::exists($this->logPath) ? File::files($this->logPath) : [])
             ->filter(fn ($file) => $file->getExtension() === 'log')
@@ -57,7 +58,7 @@ class DebugController extends ApplicationApiController
      *
      * @throws NotFoundHttpException
      */
-    public function download(string $file): BinaryFileResponse
+    public function download(GetDebugLogsRequest $request, string $file): BinaryFileResponse
     {
         $path = $this->resolvePath($file);
 
@@ -75,21 +76,36 @@ class DebugController extends ApplicationApiController
      *
      * @throws \Throwable
      */
-    public function archive(): BinaryFileResponse
+    public function archive(GetDebugLogsRequest $request): BinaryFileResponse
     {
         $files = collect(File::exists($this->logPath) ? File::files($this->logPath) : [])
             ->filter(fn ($file) => $file->getExtension() === 'log');
 
-        $zipPath = tempnam(sys_get_temp_dir(), 'panel-logs-') . '.zip';
+        // An empty zip archive is never written to disk, so there would be nothing to send.
+        if ($files->isEmpty()) {
+            throw new NotFoundHttpException('There are no log files to archive.');
+        }
+
+        // Write the archive to the file created by tempnam() itself, rather than to a
+        // second path, so that no empty temporary file is left behind.
+        $zipPath = tempnam(sys_get_temp_dir(), 'panel-logs-');
 
         $zip = new \ZipArchive();
-        $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            @unlink($zipPath);
+
+            throw new \RuntimeException('Unable to create a temporary archive of the Panel logs.');
+        }
 
         foreach ($files as $file) {
             $zip->addFile($file->getPathname(), $file->getFilename());
         }
 
-        $zip->close();
+        if (!$zip->close()) {
+            @unlink($zipPath);
+
+            throw new \RuntimeException('Unable to write the temporary archive of the Panel logs.');
+        }
 
         Activity::event('admin:settings:debug.archive')
             ->description('Downloaded an archive of the Panel logs')

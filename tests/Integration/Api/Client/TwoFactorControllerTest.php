@@ -204,4 +204,57 @@ class TwoFactorControllerTest extends ClientApiIntegrationTestCase
 
         $this->assertTrue($user->refresh()->use_totp);
     }
+
+    /**
+     * Test that enabling two-factor without first requesting a secret returns an error
+     * rather than failing to decrypt a missing secret.
+     */
+    public function testEnablingTwoFactorWithoutSecretReturnsError()
+    {
+        $user = User::factory()->create(['use_totp' => false, 'totp_secret' => null]);
+
+        $this->actingAs($user)
+            ->postJson('/api/client/account/two-factor', [
+                'code' => '123456',
+                'password' => 'password',
+            ])
+            ->assertStatus(Response::HTTP_BAD_REQUEST)
+            ->assertJsonPath('errors.0.detail', 'Two-factor authentication has not been set up on this account. Request a new secret and try again.');
+    }
+
+    /**
+     * Test that two-factor cannot be enabled again on an account that already has it.
+     */
+    public function testEnablingTwoFactorWhenAlreadyEnabledReturnsError()
+    {
+        $user = User::factory()->create(['use_totp' => true]);
+
+        $this->actingAs($user)
+            ->postJson('/api/client/account/two-factor', [
+                'code' => '123456',
+                'password' => 'password',
+            ])
+            ->assertStatus(Response::HTTP_BAD_REQUEST)
+            ->assertJsonPath('errors.0.detail', 'Two-factor authentication is already enabled on this account.');
+    }
+
+    /**
+     * Test that disabling two-factor removes the account's recovery tokens.
+     */
+    public function testDisablingTwoFactorRemovesRecoveryTokens()
+    {
+        $user = User::factory()->create(['use_totp' => true]);
+
+        RecoveryToken::query()->insert([
+            'user_id' => $user->id,
+            'token' => password_hash('abcdefghij', PASSWORD_DEFAULT),
+            'created_at' => Carbon::now(),
+        ]);
+
+        $this->actingAs($user)
+            ->postJson('/api/client/account/two-factor/disable', ['password' => 'password'])
+            ->assertNoContent();
+
+        $this->assertSame(0, RecoveryToken::query()->where('user_id', $user->id)->count());
+    }
 }

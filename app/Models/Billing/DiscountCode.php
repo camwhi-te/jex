@@ -18,7 +18,7 @@ use Everest\Models\Model;
  */
 class DiscountCode extends Model
 {
-    public const TYPE_PERCENTAGE = 'percent';
+    public const TYPE_PERCENTAGE = 'percentage';
     public const TYPE_NUMERIC = 'numeric';
 
     /**

@@ -3,6 +3,7 @@
 namespace Everest\Services\Eggs\Variables;
 
 use Everest\Models\Egg;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Everest\Models\EggVariable;
 use Everest\Exceptions\DisplayException;
@@ -40,7 +41,7 @@ class VariableUpdateService
     {
         if (!is_null(array_get($data, 'env_variable'))) {
             if (in_array(strtoupper(array_get($data, 'env_variable')), explode(',', EggVariable::RESERVED_ENV_NAMES))) {
-                throw new ReservedVariableNameException(trans('exceptions.service.variables.reserved_name', ['name' => array_get($data, 'env_variable')]));
+                throw new ReservedVariableNameException(trans('exceptions.nest.variables.reserved_name', ['name' => array_get($data, 'env_variable')]));
             }
 
             $count = $egg->variables()
@@ -49,7 +50,7 @@ class VariableUpdateService
                 ->count();
 
             if ($count > 0) {
-                throw new DisplayException(trans('exceptions.service.variables.env_not_unique', ['name' => array_get($data, 'env_variable')]));
+                throw new DisplayException(trans('exceptions.nest.variables.env_not_unique', ['name' => array_get($data, 'env_variable')]));
             }
         }
 
@@ -61,16 +62,18 @@ class VariableUpdateService
             );
         }
 
-        $options = array_get($data, 'options') ?? [];
+        // Only update the columns that were sent, so omitted fields keep their current values.
+        $update = Arr::only($data, ['name', 'description', 'env_variable', 'default_value', 'user_viewable', 'user_editable', 'rules']);
+        foreach (['description', 'default_value'] as $key) {
+            if (array_key_exists($key, $update) && is_null($update[$key])) {
+                $update[$key] = '';
+            }
+        }
 
-        $egg->variables()->where('egg_variables.id', $data['id'])->update([
-            'name' => $data['name'] ?? '',
-            'description' => $data['description'] ?? '',
-            'env_variable' => $data['env_variable'] ?? '',
-            'default_value' => $data['default_value'] ?? '',
-            'user_viewable' => $data['user_viewable'],
-            'user_editable' => $data['user_editable'],
-            'rules' => $data['rules'] ?? '',
-        ]);
+        if (empty($update)) {
+            return;
+        }
+
+        $egg->variables()->where('egg_variables.id', $data['id'])->update($update);
     }
 }

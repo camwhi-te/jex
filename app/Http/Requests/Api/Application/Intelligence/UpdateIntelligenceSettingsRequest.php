@@ -11,7 +11,9 @@ class UpdateIntelligenceSettingsRequest extends ApplicationApiRequest
     {
         return [
             'enabled' => 'nullable|bool',
-            'key' => 'nullable',
+            // The Panel frontend sends a boolean here (whether a key is set) when it only
+            // means to change another setting; booleans are accepted and then ignored.
+            'key' => is_bool($this->input('key')) ? 'nullable|bool' : 'nullable|string',
             'user_access' => 'nullable|bool',
         ];
     }

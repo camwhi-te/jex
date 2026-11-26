@@ -47,6 +47,7 @@ class AdminRole extends Model
         'description' => 'nullable|string|max:255',
         'sort_id' => 'sometimes|numeric',
         'permissions' => 'nullable|array',
+        'permissions.*' => 'string',
         'color' => 'nullable|string',
     ];
 
@@ -72,12 +73,12 @@ class AdminRole extends Model
     public const AUTH_DELETE = 'auth.delete';
 
     public const BILLING_READ = 'billing.read';
-    public const BILLING_PRODUCTS_CREATE = 'billing.product-create';
-    public const BILLING_PRODUCTS_UPDATE = 'billing.product-update';
-    public const BILLING_PRODUCTS_DELETE = 'billing.product-delete';
-    public const BILLING_CATEGORIES_CREATE = 'billing.category-create';
-    public const BILLING_CATEGORIES_UPDATE = 'billing.category-update';
-    public const BILLING_CATEGORIES_DELETE = 'billing.category-delete';
+    public const BILLING_PRODUCTS_CREATE = 'billing.products-create';
+    public const BILLING_PRODUCTS_UPDATE = 'billing.products-update';
+    public const BILLING_PRODUCTS_DELETE = 'billing.products-delete';
+    public const BILLING_CATEGORIES_CREATE = 'billing.categories-create';
+    public const BILLING_CATEGORIES_UPDATE = 'billing.categories-update';
+    public const BILLING_CATEGORIES_DELETE = 'billing.categories-delete';
     public const BILLING_ORDERS = 'billing.orders';
     public const BILLING_INVOICES = 'billing.invoices';
     public const BILLING_EXCEPTIONS = 'billing.exceptions';
@@ -241,7 +242,7 @@ class AdminRole extends Model
             'description' => 'Permissions to configure the Webhook system.',
             'keys' => [
                 'read' => 'View all available webhooks.',
-                'update' => 'Control the AI settings.',
+                'update' => 'Control the webhook settings.',
             ],
         ],
         'alerts' => [
@@ -358,5 +359,16 @@ class AdminRole extends Model
     public static function permissions(): Collection
     {
         return Collection::make(self::$permissions);
+    }
+
+    /**
+     * Returns every assignable permission string, in the "group.key" format.
+     */
+    public static function permissionStrings(): array
+    {
+        return self::permissions()
+            ->map(fn ($value, $prefix) => array_map(fn ($key) => "$prefix.$key", array_keys($value['keys'])))
+            ->flatten()
+            ->all();
     }
 }

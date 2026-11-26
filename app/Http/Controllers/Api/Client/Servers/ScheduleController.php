@@ -56,7 +56,7 @@ class ScheduleController extends ClientApiController
             'cron_day_of_month' => $request->input('day_of_month'),
             'cron_hour' => $request->input('hour'),
             'cron_minute' => $request->input('minute'),
-            'is_active' => (bool) $request->input('is_active'),
+            'is_active' => (bool) $request->input('is_active', true),
             'only_when_online' => (bool) $request->input('only_when_online'),
             'next_run_at' => $this->getNextRunAt($request),
         ]);
@@ -93,7 +93,8 @@ class ScheduleController extends ClientApiController
      */
     public function update(UpdateScheduleRequest $request, Server $server, Schedule $schedule): array
     {
-        $active = (bool) $request->input('is_active');
+        // Keep the current state if the request does not specify one.
+        $active = $request->has('is_active') ? (bool) $request->input('is_active') : $schedule->is_active;
 
         $data = [
             'name' => $request->input('name'),
