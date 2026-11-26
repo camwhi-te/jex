@@ -1,8 +1,8 @@
 # Jexpanel (formerly Jexactyl)
 
-[![Latest Release](https://img.shields.io/github/v/release/Jexactyl/Jexactyl?style=for-the-badge)](https://github.com/Jexactyl/Jexactyl/releases)
-[![Stars](https://img.shields.io/github/stars/Jexactyl/Jexactyl?style=for-the-badge)](https://github.com/Jexactyl/Jexactyl/stargazers)
-[![Forks](https://img.shields.io/github/forks/Jexactyl/Jexactyl?style=for-the-badge)](https://github.com/Jexactyl/Jexactyl/network)
+[![Latest Release](https://img.shields.io/github/v/release/camwhi-te/jex?style=for-the-badge)](https://github.com/camwhi-te/jex/releases)
+[![Stars](https://img.shields.io/github/stars/camwhi-te/jex?style=for-the-badge)](https://github.com/camwhi-te/jex/stargazers)
+[![Forks](https://img.shields.io/github/forks/camwhi-te/jex?style=for-the-badge)](https://github.com/camwhi-te/jex/network)
 
 **Game panel & billing system — fast, secure, and customizable**
 
@@ -23,7 +23,7 @@ Jexpanel is a modern, high-performance **game server management panel** built on
 ## Useful Links
 
 - Website & Documentation: [jexpanel.com](https://jexpanel.com)  
-- GitHub Repository: [Jexactyl/Jexactyl](https://github.com/Jexactyl/Jexactyl)
+- GitHub Repository: [camwhi-te/jex](https://github.com/camwhi-te/jex)
 - Discord: [discord.com/jexpanel](https://discord.gg/qttGR4Z5Pk)
 
 ## Contribution
