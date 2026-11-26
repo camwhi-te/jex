@@ -50,24 +50,22 @@ const NavigationBar = () => {
                         addSuffix: true,
                     })}
                 </span>
-            </span>
+            </span>,
         );
     }
 
     items.push(
         <span key="2fa" className={'inline-flex items-center gap-x-2'}>
-            <HeartIcon
-                className={`w-4 h-4 flex-shrink-0 ${user.useTotp ? 'text-green-400' : 'text-red-400'}`}
-            />
+            <HeartIcon className={`w-4 h-4 flex-shrink-0 ${user.useTotp ? 'text-green-400' : 'text-red-400'}`} />
             2FA is {user.useTotp ? 'Enabled' : 'Disabled'}
-        </span>
+        </span>,
     );
 
     items.push(
         <span key="user-id" className={'inline-flex items-center gap-x-2'}>
             <IdentificationIcon className={'w-4 h-4 flex-shrink-0'} />
             User ID: {user.uuid.slice(0, 8)}
-        </span>
+        </span>,
     );
 
     useEffect(() => {
