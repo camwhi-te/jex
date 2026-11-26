@@ -10,8 +10,8 @@ use Everest\Exceptions\DisplayException;
 use Everest\Http\Requests\Api\Client\ClientApiRequest;
 use Everest\Transformers\Api\Client\ServerGroupTransformer;
 use Everest\Http\Requests\Api\Client\Groups\StoreServerGroupRequest;
-use Everest\Http\Requests\Api\Client\Groups\UpdateServerGroupRequest;
 use Everest\Http\Requests\Api\Client\Groups\ServerGroupServerRequest;
+use Everest\Http\Requests\Api\Client\Groups\UpdateServerGroupRequest;
 
 class ServerGroupController extends ClientApiController
 {

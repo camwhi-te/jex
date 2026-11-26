@@ -7,8 +7,8 @@ use Everest\Facades\Activity;
 use Illuminate\Http\Response;
 use Everest\Contracts\Repository\ThemeRepositoryInterface;
 use Everest\Http\Requests\Api\Application\Theme\UpdateThemeRequest;
-use Everest\Http\Requests\Api\Application\Theme\UpdateThemeColorRequest;
 use Everest\Http\Controllers\Api\Application\ApplicationApiController;
+use Everest\Http\Requests\Api\Application\Theme\UpdateThemeColorRequest;
 
 class ThemeController extends ApplicationApiController
 {

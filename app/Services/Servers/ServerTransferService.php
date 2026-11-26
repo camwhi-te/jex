@@ -9,11 +9,11 @@ use Illuminate\Support\Arr;
 use Everest\Models\Allocation;
 use Everest\Models\ServerTransfer;
 use Everest\Exceptions\DisplayException;
-use Everest\Exceptions\Http\Connection\DaemonConnectionException;
 use Everest\Services\Nodes\NodeJWTService;
 use Illuminate\Database\ConnectionInterface;
 use Everest\Repositories\Wings\DaemonTransferRepository;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Everest\Exceptions\Http\Connection\DaemonConnectionException;
 
 class ServerTransferService
 {

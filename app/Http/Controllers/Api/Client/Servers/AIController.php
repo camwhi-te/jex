@@ -5,8 +5,8 @@ namespace Everest\Http\Controllers\Api\Client\Servers;
 use GeminiAPI\Client;
 use Everest\Models\Server;
 use Illuminate\Http\JsonResponse;
-use Everest\Exceptions\Http\HttpForbiddenException;
 use GeminiAPI\Resources\Parts\TextPart;
+use Everest\Exceptions\Http\HttpForbiddenException;
 use Everest\Http\Controllers\Api\Client\ClientApiController;
 use Everest\Http\Requests\Api\Client\Servers\QueryAIRequest;
 

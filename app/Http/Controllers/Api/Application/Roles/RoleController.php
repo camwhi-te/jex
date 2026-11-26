@@ -15,8 +15,8 @@ use Everest\Http\Requests\Api\Application\Roles\GetRolesRequest;
 use Everest\Http\Requests\Api\Application\Roles\StoreRoleRequest;
 use Everest\Http\Requests\Api\Application\Roles\DeleteRoleRequest;
 use Everest\Http\Requests\Api\Application\Roles\UpdateRoleRequest;
-use Everest\Http\Requests\Api\Application\Roles\UpdateRolePermissionsRequest;
 use Everest\Http\Controllers\Api\Application\ApplicationApiController;
+use Everest\Http\Requests\Api\Application\Roles\UpdateRolePermissionsRequest;
 
 class RoleController extends ApplicationApiController
 {

@@ -4,8 +4,8 @@ namespace Everest\Http\Requests\Api\Client\Servers\Subusers;
 
 use Everest\Models\User;
 use Everest\Models\Subuser;
-use Everest\Models\Permission;
 use Illuminate\Http\Request;
+use Everest\Models\Permission;
 use Everest\Exceptions\Http\HttpForbiddenException;
 use Everest\Http\Requests\Api\Client\ClientApiRequest;
 use Everest\Services\Servers\GetUserPermissionsService;

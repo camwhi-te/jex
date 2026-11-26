@@ -5,10 +5,10 @@ namespace Everest\Http\Controllers\Api\Application;
 use GeminiAPI\Client;
 use Everest\Models\Setting;
 use Everest\Facades\Activity;
-use Everest\Exceptions\DisplayException;
 use Illuminate\Http\Response;
 use Illuminate\Http\JsonResponse;
 use GeminiAPI\Resources\Parts\TextPart;
+use Everest\Exceptions\DisplayException;
 use Everest\Http\Requests\Api\Application\Intelligence;
 
 class IntelligenceController extends ApplicationApiController

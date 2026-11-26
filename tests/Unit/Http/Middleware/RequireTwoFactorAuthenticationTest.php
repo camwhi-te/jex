@@ -5,8 +5,8 @@ namespace Everest\Tests\Unit\Http\Middleware;
 use Mockery as m;
 use Everest\Models\User;
 use Illuminate\Session\Store;
-use Everest\Http\Middleware\RequireTwoFactorAuthentication;
 use Everest\Exceptions\Http\TwoFactorAuthRequiredException;
+use Everest\Http\Middleware\RequireTwoFactorAuthentication;
 
 class RequireTwoFactorAuthenticationTest extends MiddlewareTestCase
 {
