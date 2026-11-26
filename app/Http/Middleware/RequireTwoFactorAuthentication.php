@@ -52,9 +52,11 @@ class RequireTwoFactorAuthentication
         // If the level is set as admin and the user is not an admin, pass them through as well.
         // Requests authenticated with an API key have no session, so only check for a
         // passkey-backed login when a session is actually present.
-        $usedPasskey = $request->hasSession() && $request->session()->get('auth_passkey', false);
-
-        if (!$twoFactorRequired || $user->use_totp || $usedPasskey) {
+        if (
+            !$twoFactorRequired
+            || $user->use_totp
+            || ($request->hasSession() && $request->session()->get('auth_passkey', false))
+        ) {
             return $next($request);
         }
 
