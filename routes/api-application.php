@@ -5,7 +5,7 @@ use Everest\Http\Controllers\Api\Application;
 use Everest\Http\Middleware\Activity\AdminSubject;
 
 Route::middleware([AdminSubject::class])->group(function () {
-    Route::get('/permissions', [Application\ApplicationApiController::class, 'adminPermissions']);
+    Route::get('/permissions', Application\PermissionController::class);
 
     Route::get('/overview/version', [Application\OverviewController::class, 'version']);
     Route::get('/overview/metrics', [Application\OverviewController::class, 'metrics']);
@@ -218,8 +218,8 @@ Route::middleware([AdminSubject::class])->group(function () {
         Route::get('/', [Application\Links\LinkController::class, 'index']);
         Route::post('/', [Application\Links\LinkController::class, 'store']);
 
-        Route::patch('/{id}', [Application\Links\LinkController::class, 'update']);
-        Route::delete('/{id}', [Application\Links\LinkController::class, 'delete']);
+        Route::patch('/{id}', [Application\Links\LinkController::class, 'update'])->whereNumber('id');
+        Route::delete('/{id}', [Application\Links\LinkController::class, 'delete'])->whereNumber('id');
     });
 
     /*

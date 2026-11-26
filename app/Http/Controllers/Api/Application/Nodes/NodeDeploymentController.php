@@ -30,7 +30,10 @@ class NodeDeploymentController extends ApplicationApiController
         $nodes = $this->viableNodesService
             ->setMemory($data['memory'])
             ->setDisk($data['disk'])
-            ->handle($request->query('per_page'), $request->query('page'));
+            ->handle(
+                isset($data['per_page']) ? (int) $data['per_page'] : null,
+                isset($data['page']) ? (int) $data['page'] : (isset($data['per_page']) ? 1 : null),
+            );
 
         return $this->transform($nodes, NodeTransformer::class);
     }

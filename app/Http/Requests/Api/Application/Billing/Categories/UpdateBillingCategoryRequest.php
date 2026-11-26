@@ -3,9 +3,8 @@
 namespace Everest\Http\Requests\Api\Application\Billing\Categories;
 
 use Everest\Models\AdminRole;
-use Everest\Http\Requests\Api\Application\ApplicationApiRequest;
 
-class UpdateBillingCategoryRequest extends ApplicationApiRequest
+class UpdateBillingCategoryRequest extends StoreBillingCategoryRequest
 {
     public function permission(): string
     {

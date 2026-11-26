@@ -16,7 +16,7 @@ class UpdateEggVariablesRequest extends ApplicationApiRequest
             '*.name' => 'string|min:1|max:191',
             '*.description' => 'string|nullable',
             '*.env_variable' => 'regex:/^[\w]{1,191}$/|notIn:' . EggVariable::RESERVED_ENV_NAMES,
-            '*.default_value' => 'present',
+            '*.default_value' => 'sometimes',
             '*.user_viewable' => 'boolean',
             '*.user_editable' => 'boolean',
             '*.rules' => 'string',

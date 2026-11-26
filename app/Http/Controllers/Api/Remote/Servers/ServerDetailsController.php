@@ -14,6 +14,7 @@ use Everest\Repositories\Eloquent\ServerRepository;
 use Everest\Http\Resources\Wings\ServerConfigurationCollection;
 use Everest\Services\Servers\ServerConfigurationStructureService;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Everest\Http\Controllers\Api\Application\ApplicationApiController;
 
 class ServerDetailsController extends ApplicationApiController
@@ -60,13 +61,22 @@ class ServerDetailsController extends ApplicationApiController
         /** @var \Everest\Models\Node $node */
         $node = $request->attributes->get('node');
 
+        // If you don't cast this to an int you'll end up with a stringified per_page returned in
+        // the metadata, and then Wings will panic crash as a result.
+        $perPage = (int) $request->input('per_page', 50);
+        if ($perPage < 1) {
+            throw new BadRequestHttpException('The "per_page" query parameter must be at least 1.');
+        }
+
         // Avoid run-away N+1 SQL queries by preloading the relationships that are used
         // within each of the services called below.
-        $servers = Server::query()->with('allocations', 'egg', 'mounts', 'variables')
+        //
+        // "variables" is deliberately not eager loaded: its join is scoped to the server's
+        // ID, which is not set during eager loading, so every server would receive the egg
+        // defaults instead of its own values. It is lazy loaded per server instead.
+        $servers = Server::query()->with('allocations', 'egg', 'mounts')
             ->where('node_id', $node->id)
-            // If you don't cast this to a string you'll end up with a stringified per_page returned in
-            // the metadata, and then Wings will panic crash as a result.
-            ->paginate((int) $request->input('per_page', 50));
+            ->paginate($perPage);
 
         return new ServerConfigurationCollection($servers);
     }

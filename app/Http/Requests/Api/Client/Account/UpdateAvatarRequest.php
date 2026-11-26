@@ -8,9 +8,10 @@ class UpdateAvatarRequest extends ClientApiRequest
 {
     public function rules(): array
     {
+        // One of the two must be provided; removing an avatar is done with the DELETE endpoint.
         return [
-            'avatar_url' => ['sometimes', 'nullable', 'string', 'max:500', 'url'],
-            'avatar' => ['sometimes', 'nullable', 'image', 'max:2048'],
+            'avatar_url' => ['required_without:avatar', 'nullable', 'string', 'max:500', 'url'],
+            'avatar' => ['required_without:avatar_url', 'nullable', 'image', 'max:2048'],
         ];
     }
 }

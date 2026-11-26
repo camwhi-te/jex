@@ -35,14 +35,18 @@ class UpgradeService
     public function validate(User $user): bool
     {
         $renewal_days = config('modules.billing.renewal.days');
-        $order = $user->orders()->where(['type' => Order::TYPE_UPGRADE])->latest()->first();
+        // Only completed upgrades start the cooldown; an abandoned or failed checkout should not.
+        $order = $user->orders()
+            ->where(['type' => Order::TYPE_UPGRADE, 'status' => Order::STATUS_PROCESSED])
+            ->latest()
+            ->first();
 
         if (!$order) {
             return true;
         }
 
         if ($order->created_at->diffInDays(now()) < $renewal_days) {
-            throw new DisplayException("You must wait {$renewal_days} between server upgrades.");
+            throw new DisplayException("You must wait {$renewal_days} days between server upgrades.");
         }
 
         return true;

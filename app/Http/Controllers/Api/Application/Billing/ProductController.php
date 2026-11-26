@@ -85,10 +85,8 @@ class ProductController extends ApplicationApiController
     /**
      * Update an existing product.
      */
-    public function update(UpdateBillingProductRequest $request, Category $category, int $productId): array
+    public function update(UpdateBillingProductRequest $request, Category $category, Product $product): array
     {
-        $product = Product::findOrFail($productId);
-
         try {
             $product->update([
                 'name' => $request->input('name'),
@@ -117,11 +115,21 @@ class ProductController extends ApplicationApiController
     }
 
     /**
-     * View an existing product.
+     * View an existing product. This is shared by the standalone and the category-scoped
+     * routes, so the IDs are read from the route by name rather than by position. When a
+     * category is present in the route, the product must belong to it.
      */
-    public function view(GetBillingProductRequest $request, int $productId): array
+    public function view(GetBillingProductRequest $request): array
     {
-        $product = Product::findOrFail($productId);
+        $query = Product::query();
+
+        if (!is_null($categoryId = $request->route('category'))) {
+            $category = Category::query()->findOrFail($categoryId);
+
+            $query->where('category_uuid', $category->uuid);
+        }
+
+        $product = $query->findOrFail($request->route('product'));
 
         return $this->transform($product, ProductTransformer::class);
     }
@@ -129,10 +137,8 @@ class ProductController extends ApplicationApiController
     /**
      * Delete a product.
      */
-    public function delete(DeleteBillingProductRequest $request, Category $category, int $productId): Response
+    public function delete(DeleteBillingProductRequest $request, Category $category, Product $product): Response
     {
-        $product = Product::findOrFail($productId);
-
         $product->delete();
 
         Activity::event('admin:billing:products:delete')

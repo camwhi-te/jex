@@ -38,7 +38,11 @@ class FreeProductController extends ClientApiController
         $node = Node::find($request->input('node_id'));
         $product = Product::findOrFail($request->input('product_id'));
 
-        if ($is_new_order && $node) {
+        if ($is_new_order) {
+            if (!$node) {
+                throw new DisplayException('A valid node must be assigned for deployment.');
+            }
+
             $egg_id = $this->resolveEggSelection($product, $request->input('egg_id'));
 
             $order = DB::transaction(function () use ($user, $product, $node) {
@@ -61,12 +65,14 @@ class FreeProductController extends ClientApiController
                     $product,
                     $node,
                     $order,
-                    $request->input('variables', []),
+                    $request->input('variables') ?? [],
                     $egg_id,
                 );
 
                 $order->assignServer($server);
-            } catch (DisplayException $exception) {
+            } catch (\Throwable $exception) {
+                // Mark the order failed on any error: a pending "new" order counts as owning
+                // the product and would otherwise block every retry.
                 $order->setStatus(Order::STATUS_FAILED);
 
                 BillingException::create([
@@ -81,6 +87,20 @@ class FreeProductController extends ClientApiController
         } else {
             $this->freeDeploymentService->validate($product, $user, $node, false);
 
+            // Run every lookup and check before creating the order, so a rejected
+            // renewal never leaves a stray pending order behind.
+            $server = $user->servers()
+                ->where('id', $request->input('server_id'))
+                ->firstOrFail();
+
+            if ((int) $server->billing_product_id !== $product->id) {
+                throw new DisplayException('A server can only be renewed using the product it is billed under.');
+            }
+
+            if ($server->renewal_date && $server->renewal_date->isAfter(now()->addDays(7))) {
+                throw new DisplayException('You cannot renew a free server more than 7 days in advance.');
+            }
+
             $order = $this->orderService->create(
                 null,
                 $user,
@@ -88,17 +108,7 @@ class FreeProductController extends ClientApiController
                 Order::STATUS_PENDING,
                 Order::TYPE_RENEWAL,
             );
-
-            $server = $user->servers()
-                ->where('id', $request->input('server_id'))
-                ->firstOrFail();
             $order->assignServer($server);
-
-            if ($server->renewal_date->diffInDays(now()) <= 7) {
-                $order->delete();
-
-                throw new DisplayException('You cannot renew a free server more than 7 days in advance.');
-            }
 
             $this->renewalService->handle($server);
         }

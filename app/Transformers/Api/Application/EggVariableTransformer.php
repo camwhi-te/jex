@@ -2,7 +2,6 @@
 
 namespace Everest\Transformers\Api\Application;
 
-use Everest\Models\Egg;
 use Everest\Models\EggVariable;
 use Everest\Transformers\Api\Transformer;
 
@@ -13,7 +12,7 @@ class EggVariableTransformer extends Transformer
      */
     public function getResourceName(): string
     {
-        return Egg::RESOURCE_NAME;
+        return EggVariable::RESOURCE_NAME;
     }
 
     /**

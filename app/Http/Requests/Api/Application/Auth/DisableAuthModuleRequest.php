@@ -3,9 +3,8 @@
 namespace Everest\Http\Requests\Api\Application\Auth;
 
 use Everest\Models\AdminRole;
-use Everest\Http\Requests\Api\Application\ApplicationApiRequest;
 
-class DisableAuthModuleRequest extends ApplicationApiRequest
+class DisableAuthModuleRequest extends ToggleAuthModuleRequest
 {
     public function permission(): string
     {

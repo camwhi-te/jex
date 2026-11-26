@@ -5,6 +5,7 @@ namespace Everest\Tests\Unit\Http\Middleware;
 use Mockery as m;
 use Everest\Models\User;
 use Illuminate\Session\Store;
+use Everest\Exceptions\Http\TwoFactorAuthRequiredException;
 use Everest\Http\Middleware\RequireTwoFactorAuthentication;
 
 class RequireTwoFactorAuthenticationTest extends MiddlewareTestCase
@@ -64,6 +65,23 @@ class RequireTwoFactorAuthenticationTest extends MiddlewareTestCase
         $this->getMiddleware()->handle($this->request, $this->getClosureAssertions());
     }
 
+    /**
+     * Requests authenticated with an API key carry no session, so they must receive the
+     * two-factor exception rather than failing when the session is read.
+     */
+    public function testRequestWithoutSessionReceivesTwoFactorException()
+    {
+        $this->generateRequestUserModel(['use_totp' => false]);
+
+        $this->request->shouldReceive('hasSession')->andReturn(false);
+        $this->request->shouldNotReceive('session');
+        $this->request->shouldReceive('isJson')->andReturn(true);
+
+        $this->expectException(TwoFactorAuthRequiredException::class);
+
+        $this->getMiddleware()->handle($this->request, $this->getClosureAssertions());
+    }
+
     public function testGuestsArePassedThrough()
     {
         $this->setRequestUserModel(null);
@@ -76,6 +94,7 @@ class RequireTwoFactorAuthenticationTest extends MiddlewareTestCase
         $session = m::mock(Store::class);
         $session->shouldReceive('get')->with('auth_passkey', false)->andReturn($passkey);
 
+        $this->request->shouldReceive('hasSession')->andReturn(true);
         $this->request->shouldReceive('session')->andReturn($session);
     }
 

@@ -11,7 +11,7 @@ class UpdateServerRequest extends ApplicationApiRequest
 {
     public function rules(): array
     {
-        $rules = Server::getRules();
+        $rules = Server::getRulesForUpdate($this->route()->parameter('server'));
 
         return [
             'external_id' => $rules['external_id'],
@@ -52,32 +52,42 @@ class UpdateServerRequest extends ApplicationApiRequest
     public function validated($key = null, $default = null)
     {
         $data = parent::validated();
-        $response = [
-            'external_id' => array_get($data, 'external_id'),
-            'name' => array_get($data, 'name'),
-            'description' => array_get($data, 'description'),
-            'owner_id' => array_get($data, 'owner_id'),
 
-            'memory' => array_get($data, 'limits.memory'),
-            'swap' => array_get($data, 'limits.swap'),
-            'disk' => array_get($data, 'limits.disk'),
-            'io' => array_get($data, 'limits.io'),
-            'threads' => array_get($data, 'limits.threads'),
-            'cpu' => array_get($data, 'limits.cpu'),
-            'oom_killer' => array_get($data, 'limits.oom_killer'),
+        // Only return the fields that were sent, so that omitted fields are not
+        // overwritten with null values when the server is updated.
+        $map = [
+            'external_id' => 'external_id',
+            'name' => 'name',
+            'description' => 'description',
+            'owner_id' => 'owner_id',
 
-            'allocation_limit' => array_get($data, 'feature_limits.allocations'),
-            'backup_limit' => array_get($data, 'feature_limits.backups'),
-            'database_limit' => array_get($data, 'feature_limits.databases'),
-            'subuser_limit' => array_get($data, 'feature_limits.subusers'),
+            'memory' => 'limits.memory',
+            'swap' => 'limits.swap',
+            'disk' => 'limits.disk',
+            'io' => 'limits.io',
+            'threads' => 'limits.threads',
+            'cpu' => 'limits.cpu',
+            'oom_killer' => 'limits.oom_killer',
 
-            'renewal_date' => array_get($data, 'renewal_date'),
-            'billing_product_id' => array_get($data, 'billing_product_id'),
+            'allocation_limit' => 'feature_limits.allocations',
+            'backup_limit' => 'feature_limits.backups',
+            'database_limit' => 'feature_limits.databases',
+            'subuser_limit' => 'feature_limits.subusers',
 
-            'allocation_id' => array_get($data, 'allocation_id'),
-            'add_allocations' => array_get($data, 'add_allocations'),
-            'remove_allocations' => array_get($data, 'remove_allocations'),
+            'renewal_date' => 'renewal_date',
+            'billing_product_id' => 'billing_product_id',
+
+            'allocation_id' => 'allocation_id',
+            'add_allocations' => 'add_allocations',
+            'remove_allocations' => 'remove_allocations',
         ];
+
+        $response = [];
+        foreach ($map as $field => $source) {
+            if (Arr::has($data, $source)) {
+                $response[$field] = Arr::get($data, $source);
+            }
+        }
 
         return is_null($key) ? $response : Arr::get($response, $key, $default);
     }

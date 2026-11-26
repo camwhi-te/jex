@@ -34,6 +34,13 @@ class CustomLink extends Model
     protected $dates = [self::CREATED_AT, self::UPDATED_AT];
 
     /**
+     * Cast values to correct type.
+     */
+    protected $casts = [
+        'visible' => 'bool',
+    ];
+
+    /**
      * Fields that are not mass assignable.
      */
     protected $guarded = ['id', self::CREATED_AT, self::UPDATED_AT];

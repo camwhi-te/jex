@@ -17,15 +17,18 @@ class NodeTransformer extends Transformer
 
     /**
      * Return a node transformed into a format that can be consumed by the
-     * external client API.
+     * external client API. Only the fields the storefront needs are exposed;
+     * the rest of the node record (ports, limits, paths) is not public.
      */
     public function transform(Node $model): array
     {
-        $response = $model->toArray();
-
-        $response['created_at'] = $model->created_at->toIso8601String();
-        $response['updated_at'] = $model->updated_at->toIso8601String();
-
-        return $response;
+        return [
+            'id' => $model->id,
+            'name' => $model->name,
+            'fqdn' => $model->fqdn,
+            'deployable' => (bool) $model->deployable,
+            'deployable_free' => (bool) $model->deployable_free,
+            'deployment_fee' => $model->deployment_fee,
+        ];
     }
 }

@@ -10,6 +10,7 @@ use Spatie\QueryBuilder\QueryBuilder;
 use Everest\Services\Api\KeyCreationService;
 use Everest\Transformers\Api\Application\ApiKeyTransformer;
 use Everest\Exceptions\Http\QueryValueOutOfRangeHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Everest\Http\Controllers\Api\Application\ApplicationApiController;
 use Everest\Http\Requests\Api\Application\Api\GetApplicationApiKeysRequest;
 use Everest\Http\Requests\Api\Application\Api\StoreApplicationApiKeyRequest;
@@ -71,6 +72,12 @@ class ApiController extends ApplicationApiController
      */
     public function delete(DeleteApplicationApiKeyRequest $request, ApiKey $key): Response
     {
+        // Only application keys are managed through this endpoint; client keys belong
+        // to individual users and must not be deletable here.
+        if ((int) $key->key_type !== ApiKey::TYPE_APPLICATION) {
+            throw new NotFoundHttpException('The requested resource could not be found on the server.');
+        }
+
         Activity::event('admin:api-keys:delete')
             ->subject($key)
             ->property('api-key', $key)

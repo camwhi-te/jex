@@ -72,9 +72,14 @@ class ServerRepository extends EloquentRepository implements ServerRepositoryInt
     public function findWithVariables(int $id): Server
     {
         try {
-            return $this->getBuilder()->with('egg.variables', 'variables')
+            /** @var Server $model */
+            $model = $this->getBuilder()->with('egg.variables')
                 ->where($this->getModel()->getKeyName(), '=', $id)
                 ->firstOrFail($this->getColumns());
+
+            // Load "variables" from the loaded instance rather than eager loading it: the
+            // relation's join is scoped to the server ID, which is not set during eager loading.
+            return $model->setRelation('variables', $model->variables()->get());
         } catch (ModelNotFoundException) {
             throw new RecordNotFoundException();
         }

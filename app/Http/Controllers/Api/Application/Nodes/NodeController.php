@@ -91,6 +91,9 @@ class NodeController extends ApplicationApiController
             $request->validated(),
         );
 
+        // Building the Wings configuration loads the mounts relation; keep it out of the response.
+        $node->unsetRelation('mounts');
+
         Activity::event('admin:nodes:update')
             ->subject($node)
             ->property('node', $node)

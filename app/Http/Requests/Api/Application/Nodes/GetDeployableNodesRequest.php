@@ -9,11 +9,10 @@ class GetDeployableNodesRequest extends GetNodesRequest
     public function rules(): array
     {
         return [
-            'page' => 'integer',
+            'page' => 'integer|min:1',
+            'per_page' => 'integer|between:1,100',
             'memory' => 'required|integer|min:0',
             'disk' => 'required|integer|min:0',
-            'location_ids' => 'array',
-            'location_ids.*' => 'integer',
         ];
     }
 

@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Spatie\QueryBuilder\QueryBuilder;
 use Everest\Services\Eggs\Sharing\EggExporterService;
 use Everest\Transformers\Api\Application\EggTransformer;
+use Everest\Exceptions\Service\HasActiveServersException;
 use Everest\Http\Requests\Api\Application\Eggs\GetEggRequest;
 use Everest\Exceptions\Http\QueryValueOutOfRangeHttpException;
 use Everest\Http\Requests\Api\Application\Eggs\GetEggsRequest;
@@ -46,6 +47,8 @@ class EggController extends ApplicationApiController
             ->allowedSorts(...['id', 'name', 'author']);
         if ($perPage > 0) {
             $eggs = $eggs->paginate($perPage);
+        } else {
+            $eggs = $eggs->get();
         }
 
         return $this->transform($eggs, EggTransformer::class);
@@ -79,7 +82,7 @@ class EggController extends ApplicationApiController
             ->description('An egg was created')
             ->log();
 
-        return $this->transform($egg, EggTransformer::class);
+        return $this->transform($egg->refresh(), EggTransformer::class);
     }
 
     /**
@@ -106,6 +109,10 @@ class EggController extends ApplicationApiController
      */
     public function delete(DeleteEggRequest $request, Egg $egg): Response
     {
+        if ($egg->servers()->exists()) {
+            throw new HasActiveServersException(trans('exceptions.nest.egg.delete_has_servers'));
+        }
+
         $egg->delete();
 
         Activity::event('admin:eggs:delete')
@@ -122,14 +129,14 @@ class EggController extends ApplicationApiController
      *
      * @throws \Everest\Exceptions\Repository\RecordNotFoundException
      */
-    public function export(ExportEggRequest $request, int $eggId): JsonResponse
+    public function export(ExportEggRequest $request, Egg $egg): JsonResponse
     {
         Activity::event('admin:eggs:export')
-            ->subject(Egg::find($eggId))
-            ->property('egg', $eggId)
+            ->subject($egg)
+            ->property('egg', $egg->id)
             ->description('An egg was exported')
             ->log();
 
-        return new JsonResponse($this->eggExporterService->handle($eggId));
+        return new JsonResponse($this->eggExporterService->handle($egg->id), JsonResponse::HTTP_OK, [], 0, true);
     }
 }

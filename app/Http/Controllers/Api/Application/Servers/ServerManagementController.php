@@ -6,6 +6,7 @@ use Everest\Models\Server;
 use Everest\Facades\Activity;
 use Illuminate\Http\Response;
 use Illuminate\Http\JsonResponse;
+use Everest\Exceptions\DisplayException;
 use Everest\Services\Servers\SuspensionService;
 use Everest\Services\Servers\ServerTransferService;
 use Everest\Services\Servers\ReinstallServerService;
@@ -93,10 +94,16 @@ class ServerManagementController extends ApplicationApiController
     public function toggle(ServerToggleRequest $request, Server $server): Response
     {
         if ($server->status === Server::STATUS_INSTALL_FAILED) {
-            throw new \Exception('The server failed to install, so we cannot change the state.');
+            throw new DisplayException('The server failed to install, so we cannot change the state.');
         }
 
-        $server->update(['status' => $server->isInstalled() ? Server::STATUS_INSTALLING : null]);
+        // Only toggle between "installed" and "installing" so that other states (such
+        // as a suspension) are not silently cleared.
+        if (!is_null($server->status) && $server->status !== Server::STATUS_INSTALLING) {
+            throw new DisplayException('The installation status cannot be toggled while the server is ' . $server->status . '.');
+        }
+
+        $server->update(['status' => $server->status === Server::STATUS_INSTALLING ? null : Server::STATUS_INSTALLING]);
 
         Activity::event('admin:servers:toggle')
             ->subject($server)

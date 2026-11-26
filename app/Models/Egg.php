@@ -291,6 +291,15 @@ class Egg extends Model
     }
 
     /**
+     * Alias of variables(). Scoped route model binding resolves an {eggVariable}
+     * route parameter through a relationship with this name.
+     */
+    public function eggVariables(): HasMany
+    {
+        return $this->variables();
+    }
+
+    /**
      * Get the parent egg from which to copy scripts.
      */
     public function scriptFrom(): BelongsTo

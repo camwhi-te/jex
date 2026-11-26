@@ -10,6 +10,7 @@ use Everest\Http\Controllers\Controller;
 use Everest\Extensions\Backups\BackupManager;
 use Everest\Extensions\Filesystem\S3Filesystem;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 class BackupRemoteUploadController extends Controller
@@ -41,6 +42,11 @@ class BackupRemoteUploadController extends Controller
         /** @var Backup $backup */
         $backup = Backup::query()->where('uuid', $backup)->firstOrFail();
 
+        // Only the node that hosts the backup's server may upload it.
+        if ($backup->server->node_id !== $request->attributes->get('node')->id) {
+            throw new NotFoundHttpException();
+        }
+
         // Prevent backups that have already been completed from trying to
         // be uploaded again.
         if (!is_null($backup->completed_at)) {
@@ -48,7 +54,12 @@ class BackupRemoteUploadController extends Controller
         }
 
         // Ensure we are using the S3 adapter.
-        $adapter = $this->backupManager->adapter();
+        // Use the disk the backup was created on, not the current default adapter.
+        if ($backup->disk !== Backup::ADAPTER_AWS_S3) {
+            throw new BadRequestHttpException('The configured backup adapter is not an S3 compatible adapter.');
+        }
+
+        $adapter = $this->backupManager->adapter(Backup::ADAPTER_AWS_S3);
         if (!$adapter instanceof S3Filesystem) {
             throw new BadRequestHttpException('The configured backup adapter is not an S3 compatible adapter.');
         }

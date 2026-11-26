@@ -16,6 +16,7 @@ use Everest\Http\Requests\Api\Application\Roles\StoreRoleRequest;
 use Everest\Http\Requests\Api\Application\Roles\DeleteRoleRequest;
 use Everest\Http\Requests\Api\Application\Roles\UpdateRoleRequest;
 use Everest\Http\Controllers\Api\Application\ApplicationApiController;
+use Everest\Http\Requests\Api\Application\Roles\UpdateRolePermissionsRequest;
 
 class RoleController extends ApplicationApiController
 {
@@ -56,7 +57,7 @@ class RoleController extends ApplicationApiController
     /**
      * Returns all of the available admin permissions assignable to users.
      */
-    protected function permissions(GetRoleRequest $request): array
+    public function permissions(GetRoleRequest $request): array
     {
         return [
             'object' => 'role_permissions',
@@ -71,7 +72,7 @@ class RoleController extends ApplicationApiController
      */
     public function store(StoreRoleRequest $request): array
     {
-        $data = array_merge($request->validated(), [
+        $data = array_merge($this->filterPermissions($request->validated()), [
             'sort_id' => 99,
         ]);
         $role = AdminRole::query()->create($data);
@@ -90,7 +91,7 @@ class RoleController extends ApplicationApiController
      */
     public function update(UpdateRoleRequest $request, AdminRole $role): array
     {
-        $role->update($request->validated());
+        $role->update($this->filterPermissions($request->validated()));
 
         Activity::event('admin:roles:update')
             ->subject($role)
@@ -105,15 +106,10 @@ class RoleController extends ApplicationApiController
     /**
      * Updates the assigned permissions to a role.
      */
-    public function updatePermissions(UpdateRoleRequest $request, AdminRole $role): array
+    public function updatePermissions(UpdateRolePermissionsRequest $request, AdminRole $role): array
     {
-        $allowed = collect(AdminRole::permissions())
-            ->map(fn ($value, $prefix) => array_map(fn ($key) => "$prefix.$key", array_keys($value['keys'])))
-            ->flatten()
-            ->all();
-
         $role->update([
-            'permissions' => array_values(array_intersect($request->input('permissions', []), $allowed)),
+            'permissions' => array_values(array_intersect($request->validated('permissions') ?? [], AdminRole::permissionStrings())),
         ]);
 
         Activity::event('admin:roles:update-permissions')
@@ -145,5 +141,17 @@ class RoleController extends ApplicationApiController
             ->log();
 
         return $this->returnNoContent();
+    }
+
+    /**
+     * Removes any permission strings that are not assignable admin permissions.
+     */
+    private function filterPermissions(array $data): array
+    {
+        if (isset($data['permissions']) && is_array($data['permissions'])) {
+            $data['permissions'] = array_values(array_intersect($data['permissions'], AdminRole::permissionStrings()));
+        }
+
+        return $data;
     }
 }

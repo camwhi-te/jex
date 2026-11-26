@@ -14,6 +14,9 @@ class ProcessFreeServerRequest extends ClientApiRequest
             'server_id' => 'nullable|int|exists:servers,id',
             'egg_id' => 'nullable|int|exists:eggs,id',
             'variables' => 'nullable|array',
+            'variables.*' => 'array',
+            'variables.*.key' => 'required|string',
+            'variables.*.value' => 'nullable|string',
         ];
     }
 }

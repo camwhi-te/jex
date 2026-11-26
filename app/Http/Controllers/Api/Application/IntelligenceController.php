@@ -8,6 +8,7 @@ use Everest\Facades\Activity;
 use Illuminate\Http\Response;
 use Illuminate\Http\JsonResponse;
 use GeminiAPI\Resources\Parts\TextPart;
+use Everest\Exceptions\DisplayException;
 use Everest\Http\Requests\Api\Application\Intelligence;
 
 class IntelligenceController extends ApplicationApiController
@@ -36,11 +37,23 @@ class IntelligenceController extends ApplicationApiController
         }
 
         Activity::event('admin:ai:update')
-            ->property('settings', $request->all())
+            ->property('settings', $this->redactKey($request->normalize()))
             ->description('JexpanelAI settings were updated')
             ->log();
 
         return $this->returnNoContent();
+    }
+
+    /**
+     * Hides the API key so that it is never written to the activity log.
+     */
+    protected function redactKey(array $settings): array
+    {
+        if (is_string($settings['key'] ?? null)) {
+            $settings['key'] = '[redacted]';
+        }
+
+        return $settings;
     }
 
     /**
@@ -51,7 +64,7 @@ class IntelligenceController extends ApplicationApiController
     public function query(Intelligence\QueryRequest $request): JsonResponse
     {
         if (!config('modules.ai.enabled')) {
-            throw new \Exception('The JexpanelAI module is not enabled.');
+            throw new DisplayException('The JexpanelAI module is not enabled.');
         }
 
         $client = new Client(config('modules.ai.key'));

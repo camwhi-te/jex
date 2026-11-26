@@ -89,7 +89,8 @@ class StripeControllerCreateTest extends ClientApiIntegrationTestCase
 
         $this->actingAs($user)->postJson('/api/client/billing/stripe/create', [
             'product_id' => $product->id,
-            'server_id' => $this->createServerModel(['user_id' => $user->id])->id,
+            // Renewals must use the product the server is billed under.
+            'server_id' => $this->createServerModel(['user_id' => $user->id, 'billing_product_id' => $product->id])->id,
             'discount_code' => 'SAVE5NOW',
         ])->assertOk();
 

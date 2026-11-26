@@ -5,6 +5,7 @@ namespace Everest\Http\Controllers\Api\Application\Billing;
 use Carbon\Carbon;
 use Everest\Facades\Activity;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Everest\Models\Billing\Product;
 use Everest\Models\Billing\Category;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -64,12 +65,16 @@ class ConfigController extends ApplicationApiController
         $override = (bool) $request->input('override');
         $ignore_duplicates = (bool) $request->input('ignore_duplicates');
 
-        if ($override) {
-            Category::query()->delete();
-            Product::query()->delete();
-        }
+        // Run the whole import, including clearing the existing catalogue, in one transaction
+        // so that a failure part way through leaves the existing configuration untouched.
+        DB::transaction(function () use ($data, $override, $ignore_duplicates) {
+            if ($override) {
+                Category::query()->delete();
+                Product::query()->delete();
+            }
 
-        $this->importService->handle($data, $override ? false : $ignore_duplicates);
+            $this->importService->handle($data, $override ? false : $ignore_duplicates);
+        });
 
         Activity::event('admin:billing:config:import')
             ->property('override', $override)

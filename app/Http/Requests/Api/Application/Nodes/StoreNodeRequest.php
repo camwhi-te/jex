@@ -10,6 +10,12 @@ use Everest\Http\Requests\Api\Application\ApplicationApiRequest;
 class StoreNodeRequest extends ApplicationApiRequest
 {
     /**
+     * Whether a missing daemon_base should be filled with the default path. Only
+     * applies when creating a node, so that updates keep the current value.
+     */
+    protected bool $defaultDaemonBase = true;
+
+    /**
      * Validation rules to apply to this request.
      */
     public function rules(?array $rules = null): array
@@ -63,7 +69,9 @@ class StoreNodeRequest extends ApplicationApiRequest
     public function validated($key = null, $default = null): array
     {
         $response = parent::validated();
-        $response['daemon_base'] = $response['daemon_base'] ?? Node::DEFAULT_DAEMON_BASE;
+        if ($this->defaultDaemonBase) {
+            $response['daemon_base'] = $response['daemon_base'] ?? Node::DEFAULT_DAEMON_BASE;
+        }
 
         if (!is_null($key)) {
             return Arr::get($response, $key, $default);

@@ -3,6 +3,7 @@
 namespace Everest\Services\Eggs\Variables;
 
 use Everest\Models\EggVariable;
+use Everest\Exceptions\DisplayException;
 use Everest\Traits\Services\ValidatesValidationRules;
 use Everest\Contracts\Repository\EggVariableRepositoryInterface;
 use Illuminate\Contracts\Validation\Factory as ValidationFactory;
@@ -41,11 +42,18 @@ class VariableCreationService
             throw new ReservedVariableNameException(sprintf('Cannot use the protected name %s for this environment variable.', array_get($data, 'env_variable')));
         }
 
+        $exists = EggVariable::query()
+            ->where('egg_id', $egg)
+            ->where('env_variable', array_get($data, 'env_variable'))
+            ->exists();
+
+        if ($exists) {
+            throw new DisplayException(trans('exceptions.nest.variables.env_not_unique', ['name' => array_get($data, 'env_variable')]));
+        }
+
         if (!empty($data['rules'] ?? '')) {
             $this->validateRules($data['rules']);
         }
-
-        $options = array_get($data, 'options') ?? [];
 
         return $this->repository->create([
             'egg_id' => $egg,
@@ -53,8 +61,8 @@ class VariableCreationService
             'description' => $data['description'] ?? '',
             'env_variable' => $data['env_variable'] ?? '',
             'default_value' => $data['default_value'] ?? '',
-            'user_viewable' => in_array('user_viewable', $options),
-            'user_editable' => in_array('user_editable', $options),
+            'user_viewable' => (bool) ($data['user_viewable'] ?? false),
+            'user_editable' => (bool) ($data['user_editable'] ?? false),
             'rules' => $data['rules'] ?? '',
         ]);
     }

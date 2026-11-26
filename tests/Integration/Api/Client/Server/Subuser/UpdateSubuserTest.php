@@ -82,6 +82,7 @@ class UpdateSubuserTest extends ClientApiIntegrationTestCase
             ['control.start', 'control.stop', 'websocket.connect'],
             $subuser->permissions
         );
+        $this->assertTrue(array_is_list($subuser->permissions));
     }
 
     /**

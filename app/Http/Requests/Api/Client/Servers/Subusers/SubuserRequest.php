@@ -5,6 +5,7 @@ namespace Everest\Http\Requests\Api\Client\Servers\Subusers;
 use Everest\Models\User;
 use Everest\Models\Subuser;
 use Illuminate\Http\Request;
+use Everest\Models\Permission;
 use Everest\Exceptions\Http\HttpForbiddenException;
 use Everest\Http\Requests\Api\Client\ClientApiRequest;
 use Everest\Services\Servers\GetUserPermissionsService;
@@ -33,11 +34,9 @@ abstract class SubuserRequest extends ClientApiRequest
         }
 
         // If this is a POST request, validate that the user can even assign the permissions they
-        // have selected to assign.
-        if ($this->method() === Request::METHOD_POST && $this->has('permissions')) {
-            $this->validatePermissionsCanBeAssigned(
-                $this->input('permissions') ?? []
-            );
+        // have selected to assign. A non-array value is rejected later by the validation rules.
+        if ($this->method() === Request::METHOD_POST && is_array($this->input('permissions'))) {
+            $this->validatePermissionsCanBeAssigned($this->input('permissions'));
         }
 
         return true;
@@ -65,6 +64,15 @@ abstract class SubuserRequest extends ClientApiRequest
         // already have.
         /** @var GetUserPermissionsService $service */
         $service = $this->container->make(GetUserPermissionsService::class);
+
+        // Unknown permission strings are discarded by the controller before saving, so only
+        // check the permissions that actually exist on the system.
+        $known = Permission::permissions()
+            ->map(fn ($value, $prefix) => array_map(fn ($key) => "$prefix.$key", array_keys($value['keys'])))
+            ->flatten()
+            ->all();
+
+        $permissions = array_intersect(array_filter($permissions, 'is_string'), $known);
 
         if (count(array_diff($permissions, $service->handle($server, $user))) > 0) {
             throw new HttpForbiddenException('Cannot assign permissions to a subuser that your account does not actively possess.');

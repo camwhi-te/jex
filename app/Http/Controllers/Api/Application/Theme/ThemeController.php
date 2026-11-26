@@ -8,6 +8,7 @@ use Illuminate\Http\Response;
 use Everest\Contracts\Repository\ThemeRepositoryInterface;
 use Everest\Http\Requests\Api\Application\Theme\UpdateThemeRequest;
 use Everest\Http\Controllers\Api\Application\ApplicationApiController;
+use Everest\Http\Requests\Api\Application\Theme\UpdateThemeColorRequest;
 
 class ThemeController extends ApplicationApiController
 {
@@ -25,7 +26,7 @@ class ThemeController extends ApplicationApiController
      *
      * @throws \Throwable
      */
-    public function colors(UpdateThemeRequest $request): Response
+    public function colors(UpdateThemeColorRequest $request): Response
     {
         $this->theme->set('theme::colors:' . $request->input('key'), $request->input('value'));
 

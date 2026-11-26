@@ -43,7 +43,7 @@ class FindViableNodesService
      * This functionality is used for automatic deployments of servers and will
      * attempt to find all nodes in the defined locations that meet the disk and
      * memory availability requirements. Any nodes not meeting those requirements
-     * are tossed out, as are any nodes marked as non-public, meaning automatic
+     * are tossed out, as are any nodes marked as non-public or in maintenance mode, meaning automatic
      * deployments should not be done against them.
      *
      * @param int|null $page If provided the results will be paginated by returning
@@ -62,7 +62,8 @@ class FindViableNodesService
             ->selectRaw('COALESCE(SUM(servers.memory), 0) as sum_memory')
             ->selectRaw('COALESCE(SUM(servers.disk), 0) as sum_disk')
             ->leftJoin('servers', 'servers.node_id', '=', 'nodes.id')
-            ->where('nodes.public', 1);
+            ->where('nodes.public', 1)
+            ->where('nodes.maintenance_mode', 0);
 
         $results = $query->groupBy('nodes.id')
             ->havingRaw('(COALESCE(SUM(servers.memory), 0) + ?) <= (nodes.memory * (1.0 + (nodes.memory_overallocate / 100.0)))', [$this->memory])
@@ -74,7 +75,9 @@ class FindViableNodesService
             $results = $results->get()->toBase();
         }
 
-        if ($results->isEmpty()) {
+        // A paginator for a page past the end is empty even when nodes match, so check
+        // the total number of matching nodes instead.
+        if ($results instanceof LengthAwarePaginator ? $results->total() === 0 : $results->isEmpty()) {
             throw new NoViableNodeException(trans('exceptions.deployment.no_viable_nodes'));
         }
 

@@ -78,7 +78,7 @@ class FileController extends ClientApiController
             ->setExpiresAt(CarbonImmutable::now()->addMinutes(15))
             ->setUser($request->user())
             ->setClaims([
-                'file_path' => rawurldecode($request->get('file')),
+                'file_path' => $request->get('file'),
                 'server_uuid' => $server->uuid,
             ])
             ->setScopes(JwtScope::FileDownload)
@@ -121,7 +121,7 @@ class FileController extends ClientApiController
     {
         $this->fileRepository
             ->setServer($server)
-            ->createDirectory($request->input('name'), $request->input('root', '/'));
+            ->createDirectory($request->input('name'), $request->input('root') ?? '/');
 
         Activity::event('server:file.create-directory')
             ->property('name', $request->input('name'))

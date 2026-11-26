@@ -42,7 +42,8 @@ class AllocationController extends ApplicationApiController
 
         $allocations = QueryBuilder::for(Allocation::query()->where('node_id', '=', $node->id))
             ->allowedFilters(...[
-                'id', 'ip', 'port', 'alias',
+                'id', 'ip', 'port',
+                AllowedFilter::partial('alias', 'ip_alias'),
                 AllowedFilter::callback('server_id', function (Builder $query, $value) {
                     if ($value === '0') {
                         $query->whereNull('server_id');
@@ -51,6 +52,9 @@ class AllocationController extends ApplicationApiController
                     }
                 }),
                 AllowedFilter::callback('search', function (Builder $query, $value) {
+                    // Values containing a comma arrive as an array.
+                    $value = is_array($value) ? implode(',', $value) : $value;
+
                     $query->where(function ($q) use ($value) {
                         $q->where('ip', 'like', "%{$value}%")
                         ->orWhere('port', 'like', "%{$value}%")
@@ -75,10 +79,15 @@ class AllocationController extends ApplicationApiController
      */
     public function store(StoreAllocationRequest $request, Node $node): Response
     {
-        $request->merge(['allocation_ports' => $request['end_port'] ? range($request['start_port'], $request['end_port']) : [$request['start_port']],
-        ]);
+        $data = $request->validated();
 
-        $this->assignmentService->handle($node, $request->all());
+        // Pass a range as a "start-end" string so that the assignment service applies
+        // its port range limit to it.
+        $data['allocation_ports'] = isset($data['end_port']) && (int) $data['end_port'] !== (int) $data['start_port']
+            ? [sprintf('%d-%d', $data['start_port'], $data['end_port'])]
+            : [(int) $data['start_port']];
+
+        $this->assignmentService->handle($node, $data);
 
         Activity::event('admin:nodes:allocations:create')
             ->subject($node)
@@ -113,9 +122,7 @@ class AllocationController extends ApplicationApiController
      */
     public function deleteAll(DeleteAllocationRequest $request, Node $node): Response
     {
-        $allocations = Allocation::where('server_id', null)->get();
-
-        $allocations->map->delete();
+        $node->allocations()->whereNull('server_id')->delete();
 
         Activity::event('admin:nodes:allocations:delete-all')
             ->subject($node)

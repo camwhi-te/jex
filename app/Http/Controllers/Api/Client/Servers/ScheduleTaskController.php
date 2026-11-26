@@ -105,11 +105,20 @@ class ScheduleTaskController extends ClientApiController
             throw new HttpForbiddenException("A backup task cannot be created when the server's backup limit is set to 0.");
         }
 
+        $original = ['action' => $task->action, 'payload' => $task->payload];
+
         $this->connection->transaction(function () use ($request, $schedule, $task) {
             $sequenceId = $request->integer('sequence_id', $task->sequence_id);
             // Ensure that the sequence id is at least 1.
             if ($sequenceId < 1) {
                 $sequenceId = 1;
+            }
+
+            // Ensure that the sequence id does not exceed the last task in the schedule,
+            // otherwise a gap would be left in the sequence.
+            $maxSequenceId = (int) $schedule->tasks()->max('sequence_id');
+            if ($sequenceId > $maxSequenceId) {
+                $sequenceId = $maxSequenceId;
             }
 
             // Shift all other tasks in the schedule up or down to make room for the new task.
@@ -134,12 +143,19 @@ class ScheduleTaskController extends ClientApiController
             ]);
         });
 
+        $task->refresh();
+
         Activity::event('server:task.update')
             ->subject($schedule, $task)
-            ->property(['name' => $schedule->name, 'action' => $task->action, 'payload' => $task->payload])
+            ->property([
+                'name' => $schedule->name,
+                'action' => $task->action,
+                'payload' => $task->payload,
+                'old' => $original,
+            ])
             ->log();
 
-        return $this->transform($task->refresh(), TaskTransformer::class);
+        return $this->transform($task, TaskTransformer::class);
     }
 
     /**

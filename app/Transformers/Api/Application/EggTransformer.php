@@ -38,7 +38,7 @@ class EggTransformer extends Transformer
      */
     public function transform(Egg $model): array
     {
-        $files = json_decode($model->config_files, true, 512, JSON_THROW_ON_ERROR);
+        $files = json_decode($model->config_files ?? '{}', true, 512, JSON_THROW_ON_ERROR);
         if (empty($files)) {
             $files = new \stdClass();
         }

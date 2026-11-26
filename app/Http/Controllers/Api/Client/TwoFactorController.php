@@ -62,6 +62,15 @@ class TwoFactorController extends ClientApiController
             throw new BadRequestHttpException('The password provided was not valid.');
         }
 
+        if ($request->user()->use_totp) {
+            throw new BadRequestHttpException('Two-factor authentication is already enabled on this account.');
+        }
+
+        // Without a secret from the setup endpoint there is nothing to verify the code against.
+        if (empty($request->user()->totp_secret)) {
+            throw new BadRequestHttpException('Two-factor authentication has not been set up on this account. Request a new secret and try again.');
+        }
+
         $tokens = $this->toggleTwoFactorService->handle($request->user(), $data['code'], true);
 
         Activity::event('user:two-factor.create')->log();
@@ -93,6 +102,9 @@ class TwoFactorController extends ClientApiController
             'totp_authenticated_at' => Carbon::now(),
             'use_totp' => false,
         ]);
+
+        // Recovery tokens only bypass TOTP, so they must not outlive it.
+        $user->recoveryTokens()->delete();
 
         Activity::event('user:two-factor.delete')->log();
 

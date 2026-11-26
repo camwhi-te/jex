@@ -11,6 +11,7 @@ use Everest\Exceptions\DisplayException;
 use Everest\Extensions\Backups\BackupManager;
 use Everest\Extensions\Filesystem\S3Filesystem;
 use Everest\Http\Requests\Api\Remote\ReportBackupCompleteRequest;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Everest\Http\Controllers\Api\Application\ApplicationApiController;
 
@@ -30,8 +31,7 @@ class BackupStatusController extends ApplicationApiController
      */
     public function index(ReportBackupCompleteRequest $request, string $backup): Response
     {
-        /** @var Backup $model */
-        $model = Backup::query()->where('uuid', $backup)->firstOrFail();
+        $model = $this->findBackupForNode($request, $backup);
 
         if ($model->is_successful) {
             throw new BadRequestHttpException('Cannot update the status of a backup that is already marked as completed.');
@@ -54,11 +54,13 @@ class BackupStatusController extends ApplicationApiController
                 'completed_at' => CarbonImmutable::now(),
             ])->save();
 
-            // Check if we are using the s3 backup adapter. If so, make sure we mark the backup as
-            // being completed in S3 correctly.
-            $adapter = $this->backupManager->adapter();
-            if ($adapter instanceof S3Filesystem) {
-                $this->completeMultipartUpload($model, $adapter, $successful, $request->input('parts'));
+            // If the backup was stored on S3, make sure we mark it as being completed in S3
+            // correctly. Use the backup's own disk rather than the current default adapter.
+            if ($model->disk === Backup::ADAPTER_AWS_S3) {
+                $adapter = $this->backupManager->adapter(Backup::ADAPTER_AWS_S3);
+                if ($adapter instanceof S3Filesystem) {
+                    $this->completeMultipartUpload($model, $adapter, $successful, $request->input('parts'));
+                }
             }
         });
 
@@ -77,17 +79,32 @@ class BackupStatusController extends ApplicationApiController
      */
     public function restore(Request $request, string $backup): Response
     {
-        /** @var Backup $model */
-        $model = Backup::query()->where('uuid', $backup)->firstOrFail();
+        $model = $this->findBackupForNode($request, $backup);
 
         $model->server->update(['status' => null]);
 
-        Activity::event($request->boolean('successful') ? 'server:backup.restore-complete' : 'server.backup.restore-failed')
+        Activity::event($request->boolean('successful') ? 'server:backup.restore-complete' : 'server:backup.restore-failed')
             ->subject($model, $model->server)
             ->property('name', $model->name)
             ->log();
 
         return $this->returnNoContent();
+    }
+
+    /**
+     * Returns the backup with the given UUID, provided its server is on the node making the
+     * request. Backups on other nodes are reported as not found.
+     */
+    private function findBackupForNode(Request $request, string $uuid): Backup
+    {
+        /** @var Backup $model */
+        $model = Backup::query()->where('uuid', $uuid)->firstOrFail();
+
+        if ($model->server->node_id !== $request->attributes->get('node')->id) {
+            throw new NotFoundHttpException();
+        }
+
+        return $model;
     }
 
     /**
