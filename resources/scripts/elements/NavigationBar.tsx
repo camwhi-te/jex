@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { type ReactElement, useEffect, useState } from 'react';
 import { useStoreState } from 'easy-peasy';
 import SearchContainer from '@account/search/SearchContainer';
 import tw from 'twin.macro';
@@ -37,7 +37,7 @@ const NavigationBar = () => {
 
     const pathnames = location.pathname.split('/').filter(Boolean);
 
-    const items = [];
+    const items: ReactElement[] = [];
 
     if (activityEnabled && data?.items && data.items.length > 0) {
         items.push(
